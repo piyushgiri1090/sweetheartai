@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.venv/
+data/*
+!data/training_data.example.jsonl
+models/
+build/
+dist/
+*.spec
+.env
+.env.*
+!.env.example
+*.log

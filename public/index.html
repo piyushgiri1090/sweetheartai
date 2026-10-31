@@ -1,0 +1,1731 @@
+<!doctype html>
+<html lang="hi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#090d15" />
+    <link rel="icon" type="image/svg+xml" href="/assets/sweetheart.svg" />
+    <title>Sweetheart</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Noto Sans Devanagari", "Nirmala UI", "Mangal", system-ui, sans-serif;
+        color: #eef5ff;
+        background: #090d15;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+        --panel: #111a27;
+        --panel-edge: #263648;
+        --muted: #91a2b7;
+        --gold: #f5b942;
+        --cyan: #62d9f5;
+        --red: #ff554d;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        background:
+          radial-gradient(ellipse at 50% -18%, #6b3b1a66 0, transparent 36rem),
+          radial-gradient(ellipse at 8% 52%, #8d292322 0, transparent 30rem),
+          radial-gradient(ellipse at 95% 78%, #12728a22 0, transparent 28rem),
+          #090d15;
+      }
+
+      body::before {
+        position: fixed;
+        z-index: 2;
+        pointer-events: none;
+        content: "";
+        inset: 0;
+        opacity: 0.12;
+        background: repeating-linear-gradient(
+          to bottom,
+          transparent 0,
+          transparent 3px,
+          #8ca2b508 4px,
+          #8ca2b508 5px
+        );
+      }
+
+      button, textarea, input, select { font: inherit; }
+      button { cursor: pointer; }
+
+      .shell {
+        position: relative;
+        width: min(100% - 36px, 860px);
+        min-height: 100vh;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+      }
+
+      header {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 25px 0 19px;
+        border-bottom: 1px solid #e8a43c55;
+      }
+
+      header::after {
+        position: absolute;
+        right: 0;
+        bottom: -1px;
+        width: 30%;
+        height: 1px;
+        content: "";
+        background: linear-gradient(90deg, transparent, var(--cyan));
+        box-shadow: 0 0 12px var(--cyan);
+      }
+
+      .brand-mark {
+        width: 50px;
+        height: 50px;
+        flex: 0 0 auto;
+        filter: drop-shadow(0 0 10px #f5b94266);
+      }
+
+      h1 { margin: 0; color: #fff2ce; font-size: 20px; font-weight: 700; letter-spacing: 0.04em; }
+      .tagline { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+
+      .privacy {
+        margin-left: auto;
+        padding: 8px 11px;
+        border: 1px solid #62d9f544;
+        border-radius: 6px;
+        background: #0c202a99;
+        color: #a4dce8;
+        font-size: 11px;
+        text-align: right;
+        box-shadow: inset 0 0 15px #62d9f50a;
+      }
+
+      main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 22px 0 16px;
+      }
+
+      .tab-bar {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        gap: 8px;
+        margin-top: 18px;
+        padding: 5px;
+        border: 1px solid #263648;
+        border-radius: 9px;
+        background: #0e1621dd;
+      }
+
+      .tab-button {
+        flex: 1;
+        padding: 10px 12px;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        background: transparent;
+        color: #a7b7c9;
+        font-size: 13px;
+      }
+
+      .tab-button[aria-selected="true"] {
+        border-color: #f5b94266;
+        background: linear-gradient(135deg, #34251d, #172431);
+        color: #fff0c4;
+        box-shadow: inset 0 0 14px #f5b9420d;
+      }
+
+      .tab-panel {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .tab-panel[hidden] { display: none; }
+
+      .music-heading { margin: 3px 0 18px; }
+      .music-heading h2 { margin: 0 0 6px; color: #fff1ca; font-size: 21px; }
+      .music-heading p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+
+      .song-generator {
+        margin-bottom: 16px;
+        padding: 16px;
+        border: 1px solid #62d9f544;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #10232d, #101720);
+      }
+
+      .song-generator h3 { margin: 0 0 6px; color: #fff1ca; font-size: 15px; }
+      .song-generator > p { margin: 0 0 12px; color: var(--muted); font-size: 11px; line-height: 1.7; }
+      .song-generator-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+      .song-generator-form textarea,
+      .song-generator-form input,
+      .song-generator-form select {
+        width: 100%;
+        min-height: 39px;
+        padding: 8px 10px;
+        border: 1px solid #52677b88;
+        border-radius: 6px;
+        outline: 0;
+        background: #0c131d;
+        color: #eef5ff;
+        font-size: 12px;
+      }
+      .song-generator-form textarea { min-height: 86px; resize: vertical; }
+      .song-generator-form textarea:focus,
+      .song-generator-form input:focus,
+      .song-generator-form select:focus { border-color: var(--cyan); box-shadow: 0 0 0 2px #62d9f522; }
+      .song-generator-form .full-width { grid-column: 1 / -1; }
+
+      .song-generate-submit {
+        justify-self: start;
+        padding: 9px 14px;
+        border: 1px solid #75e6fa;
+        border-radius: 6px;
+        background: linear-gradient(145deg, #69d6eb, #237c9b);
+        color: #07151b;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .song-generator-status { min-height: 18px; margin: 9px 2px 0 !important; color: #9deafa !important; }
+
+      .music-form {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        padding: 16px;
+        border: 1px solid #d9953d55;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #14202c, #101720);
+      }
+
+      .music-field {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        color: #b6c5d5;
+        font-size: 11px;
+      }
+
+      .music-field input,
+      .music-field textarea {
+        width: 100%;
+        min-height: 39px;
+        padding: 8px 10px;
+        border: 1px solid #52677b88;
+        border-radius: 6px;
+        outline: 0;
+        background: #0c131d;
+        color: #eef5ff;
+        font-size: 12px;
+      }
+
+      .music-field input:focus,
+      .music-field textarea:focus,
+      .music-search:focus {
+        border-color: var(--cyan);
+        box-shadow: 0 0 0 2px #62d9f522;
+      }
+
+      .music-field input[type="file"] { padding: 6px; }
+      .music-field textarea { min-height: 65px; resize: vertical; }
+      .music-field.full-width { grid-column: 1 / -1; }
+
+      .music-submit {
+        justify-self: start;
+        padding: 9px 14px;
+        border: 1px solid #ffc85d;
+        border-radius: 6px;
+        background: linear-gradient(145deg, #f8c65c, #c45c2f);
+        color: #20150d;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .music-status { min-height: 18px; margin: 7px 2px; color: #9deafa; font-size: 11px; }
+
+      .music-library-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 18px 0 10px;
+      }
+
+      .music-library-header h3 { margin: 0; color: #fff1ca; font-size: 15px; }
+      .music-library-heading { margin: 18px 0 10px; color: #fff1ca; font-size: 15px; }
+
+      .music-search {
+        width: min(100%, 240px);
+        margin-left: auto;
+        padding: 7px 9px;
+        border: 1px solid #52677b88;
+        border-radius: 6px;
+        outline: 0;
+        background: #0c131d;
+        color: #eef5ff;
+        font-size: 11px;
+      }
+
+      .music-track-list { display: flex; flex-direction: column; gap: 10px; padding-bottom: 15px; }
+
+      .music-track {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        padding: 13px;
+        border: 1px solid #263648;
+        border-radius: 8px;
+        background: #101923dd;
+      }
+
+      .music-track h4 { margin: 0 0 5px; color: #fff0c4; font-size: 14px; }
+      .music-track p { margin: 3px 0; color: #aebdd0; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+      .music-track audio { width: min(100%, 420px); height: 36px; margin-top: 8px; }
+      .music-track details { margin-top: 7px; color: #9deafa; font-size: 11px; }
+      .music-track details p { margin-top: 6px; white-space: pre-wrap; }
+      .music-download { display: inline-block; margin-top: 7px; color: #9deafa; font-size: 11px; }
+
+      .music-delete {
+        align-self: start;
+        padding: 6px 9px;
+        border: 1px solid #ff554d66;
+        border-radius: 5px;
+        background: #321b20;
+        color: #ffb8b2;
+        font-size: 11px;
+      }
+
+      .music-empty {
+        padding: 15px;
+        border: 1px dashed #52677b88;
+        border-radius: 8px;
+        color: #91a2b7;
+        font-size: 12px;
+        text-align: center;
+      }
+
+      .welcome {
+        position: relative;
+        margin: auto auto 24px;
+        max-width: 610px;
+        padding: 26px 30px 28px;
+        border: 1px solid #d9953d66;
+        border-radius: 14px;
+        background:
+          linear-gradient(135deg, #172230ee, #0d141fee 62%, #21191aee);
+        text-align: center;
+        box-shadow: 0 18px 70px #0008, 0 0 30px #f5b94212, inset 0 0 36px #63d8f508;
+      }
+
+      .welcome::before, .welcome::after {
+        position: absolute;
+        width: 24px;
+        height: 24px;
+        content: "";
+        border-color: var(--cyan);
+        opacity: 0.75;
+      }
+
+      .welcome::before {
+        top: -1px;
+        left: -1px;
+        border-top: 2px solid;
+        border-left: 2px solid;
+        border-radius: 14px 0 0;
+      }
+
+      .welcome::after {
+        right: -1px;
+        bottom: -1px;
+        border-right: 2px solid;
+        border-bottom: 2px solid;
+        border-radius: 0 0 14px;
+      }
+
+      .welcome-icon {
+        display: block;
+        width: 76px;
+        height: 76px;
+        margin: 0 auto;
+        filter: drop-shadow(0 0 14px #f5b94255);
+      }
+
+      .welcome h2 { margin: 17px 0 8px; color: #fff1ca; font-size: 24px; }
+      .welcome p { margin: 0; color: #aebdd0; line-height: 1.8; font-size: 14px; }
+
+      .suggestions {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 9px;
+        margin-top: 22px;
+      }
+
+      .suggestion {
+        padding: 9px 13px;
+        border: 1px solid #677b8e88;
+        border-radius: 6px;
+        background: #111c28;
+        color: #d7e3ef;
+        font-size: 12px;
+        transition: border-color 150ms ease, box-shadow 150ms ease, color 150ms ease;
+      }
+
+      .suggestion:hover {
+        border-color: var(--gold);
+        color: #fff0c4;
+        box-shadow: 0 0 15px #f5b94222;
+      }
+
+      #chat {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 4px 0 20px;
+      }
+
+      .message {
+        max-width: 86%;
+        padding: 13px 16px;
+        border-radius: 12px;
+        line-height: 1.8;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      .message.user {
+        align-self: flex-end;
+        border: 1px solid #efaa4a88;
+        border-bottom-right-radius: 3px;
+        background: linear-gradient(135deg, #5b2b20, #34211f);
+        color: #fff1d2;
+        box-shadow: 0 0 18px #ee9b3020;
+      }
+
+      .message.assistant {
+        align-self: flex-start;
+        border: 1px solid #62d9f544;
+        border-bottom-left-radius: 3px;
+        background: linear-gradient(135deg, #142433, #111923);
+        color: #e5eff8;
+        box-shadow: inset 3px 0 0 #62d9f5aa, 0 8px 24px #0003;
+      }
+
+      .message.error {
+        border-color: #ff554d99;
+        background: #381a20;
+        color: #ffc0ba;
+      }
+
+      .message-tools {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 8px;
+      }
+
+      .speak-answer {
+        padding: 5px 9px;
+        border: 1px solid #62d9f544;
+        border-radius: 5px;
+        background: #10232d;
+        color: #9deafa;
+        font-size: 12px;
+      }
+
+      .speak-answer:hover { border-color: var(--cyan); }
+
+      .composer {
+        position: sticky;
+        bottom: 0;
+        padding: 13px 0 17px;
+        background: linear-gradient(transparent, #090d15 16px);
+      }
+
+      .input-card {
+        display: flex;
+        align-items: flex-end;
+        gap: 9px;
+        padding: 10px;
+        border: 1px solid #d79b4d77;
+        border-radius: 12px;
+        background: #101822f5;
+        box-shadow: 0 10px 35px #0008, 0 0 20px #f5b94212;
+      }
+
+      textarea {
+        flex: 1;
+        min-height: 42px;
+        max-height: 150px;
+        resize: vertical;
+        padding: 10px 9px;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        color: #f1f5fb;
+        line-height: 1.6;
+      }
+
+      textarea::placeholder { color: #8292a5; }
+
+      .icon-button, .send-button {
+        flex: 0 0 auto;
+        width: 43px;
+        height: 43px;
+        display: grid;
+        place-items: center;
+        border: 1px solid #64788a66;
+        border-radius: 9px;
+        font-size: 19px;
+        transition: box-shadow 150ms ease, transform 150ms ease;
+      }
+
+      .icon-button { background: #182331; color: #a9dceb; }
+      .icon-button:hover { border-color: var(--cyan); box-shadow: 0 0 15px #62d9f533; }
+      .icon-button[aria-pressed="true"] {
+        border-color: var(--red);
+        background: #3a1c22;
+        color: #ffaaa1;
+        box-shadow: 0 0 16px #ff554d33;
+      }
+      .send-button {
+        border-color: #ffc85d;
+        background: linear-gradient(145deg, #f8c65c, #c45c2f);
+        color: #20150d;
+        text-shadow: 0 1px #ffdfa0;
+        box-shadow: 0 0 16px #f5b94233;
+      }
+      .send-button:hover { transform: translateY(-1px); box-shadow: 0 0 22px #f5b94266; }
+      button:disabled { cursor: not-allowed; opacity: 0.55; }
+
+      .hint {
+        min-height: 20px;
+        margin: 8px 7px 0;
+        color: #8496aa;
+        font-size: 11px;
+      }
+
+      .voice-options {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 9px;
+        margin: 9px 5px 0;
+        color: #8496aa;
+        font-size: 11px;
+      }
+
+      .voice-options select {
+        max-width: min(100%, 290px);
+        padding: 5px 26px 5px 9px;
+        border: 1px solid #52677b88;
+        border-radius: 6px;
+        background: #101822;
+        color: #dce8f4;
+        font: inherit;
+      }
+
+      .voice-options select:focus-visible {
+        outline: 2px solid #62d9f5;
+        outline-offset: 2px;
+      }
+
+      .voice-tools, .voice-sample-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 7px;
+      }
+
+      .voice-tool-button, .voice-sample-actions button {
+        padding: 6px 9px;
+        border: 1px solid #52677b88;
+        border-radius: 6px;
+        background: #101822;
+        color: #c4d5e5;
+        font-size: 11px;
+      }
+
+      .voice-tool-button:hover, .voice-sample-actions button:hover {
+        border-color: var(--cyan);
+        color: #dffaff;
+      }
+
+      .voice-sample {
+        display: grid;
+        gap: 7px;
+        margin: 8px 5px 0;
+        padding: 10px;
+        border: 1px solid #52677b55;
+        border-radius: 8px;
+        background: #0c131d99;
+        color: #aebdd0;
+        font-size: 11px;
+      }
+
+      .voice-sample-actions input[type="file"] {
+        max-width: min(100%, 240px);
+        color: #aebdd0;
+        font: inherit;
+      }
+
+      .voice-sample audio { width: min(100%, 380px); height: 34px; }
+      .voice-status, .voice-sample-note { margin: 0; color: #91a2b7; font-size: 10px; line-height: 1.6; }
+      #voice-sample-status { color: #9deafa; }
+
+      @media (max-width: 520px) {
+        .shell { width: min(100% - 22px, 860px); }
+        header { gap: 11px; padding-top: 18px; }
+        .brand-mark { width: 43px; height: 43px; }
+        h1 { font-size: 18px; }
+        .tagline { max-width: 210px; font-size: 10px; }
+        .privacy { max-width: 112px; padding: 6px 7px; font-size: 9px; }
+        main { padding-top: 24px; }
+        .welcome { padding: 22px 16px 23px; }
+        .welcome h2 { font-size: 20px; }
+        .welcome p { font-size: 13px; }
+        .message { max-width: 94%; }
+        .music-form { grid-template-columns: 1fr; padding: 12px; }
+        .song-generator-form { grid-template-columns: 1fr; }
+        .song-generator-form .full-width { grid-column: auto; }
+        .music-field.full-width { grid-column: auto; }
+        .music-track { grid-template-columns: minmax(0, 1fr); }
+        .music-delete { justify-self: start; }
+        .music-library-header { align-items: flex-start; flex-direction: column; }
+        .music-search { width: 100%; margin-left: 0; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <img class="brand-mark" src="/assets/sweetheart.svg" alt="" />
+        <div>
+          <h1>Sweetheart</h1>
+          <p class="tagline">Piyush और Nitish द्वारा बनाया गया आपका Hindi सहायक</p>
+        </div>
+        <div class="privacy">AI जवाब आपके computer पर बनते हैं</div>
+      </header>
+
+      <nav class="tab-bar" role="tablist" aria-label="मुख्य अनुभाग">
+        <button class="tab-button" id="assistant-tab" type="button" role="tab" aria-selected="true" aria-controls="assistant-panel">💬 बातचीत</button>
+        <button class="tab-button" id="music-tab" type="button" role="tab" aria-selected="false" aria-controls="music-panel">♫ म्यूज़िक</button>
+      </nav>
+
+      <main>
+        <section class="tab-panel" id="assistant-panel" role="tabpanel" aria-labelledby="assistant-tab">
+          <section class="welcome" id="welcome" aria-label="शुरुआत">
+            <img class="welcome-icon" src="/assets/sweetheart.svg" alt="" />
+            <h2>नमस्ते! मैं आपकी क्या मदद करूँ?</h2>
+            <p>लिखकर सवाल पूछें या 📞 दबाकर voice call शुरू करें। Phones के features, specs और खरीदने की सलाह भी पूछें। Call में मैं आपकी बात सुनूँगा और जवाब बोलकर दूँगा।</p>
+            <div class="suggestions">
+              <button class="suggestion" type="button">आज के लिए एक अच्छी सलाह दो</button>
+              <button class="suggestion" type="button">मुझे कोई नई चीज़ सिखाओ</button>
+              <button class="suggestion" type="button">एक आसान healthy recipe बताओ</button>
+            </div>
+          </section>
+          <section id="chat" aria-live="polite" aria-label="बातचीत"></section>
+        </section>
+
+        <section class="tab-panel" id="music-panel" role="tabpanel" aria-labelledby="music-tab" hidden>
+          <div class="music-heading">
+            <h2>म्यूज़िक लाइब्रेरी</h2>
+            <p>गाने की जानकारी और अपनी audio फ़ाइल जोड़ें। डेटा इसी PC पर Sweetheart के local app-data folder में save होता है। हर audio फ़ाइल अधिकतम 50 MB की हो सकती है।</p>
+          </div>
+          <section class="song-generator" aria-labelledby="song-generator-heading">
+            <h3 id="song-generator-heading">Prompt से अपना गाना बनाएँ</h3>
+            <p>अपना idea लिखें। Sweetheart Hindi lyrics और गाया हुआ गाना बनाएगा; lyrics खाली छोड़ने पर local Ollama उनका मसौदा बनाएगा। CPU पर generation धीमी हो सकती है।</p>
+            <form class="song-generator-form" id="song-generator-form">
+              <label class="music-field full-width">गाने का idea / prompt *
+                <input name="prompt" maxlength="1200" required placeholder="जैसे: बारिश में पुराने शहर की यादों पर एक मीठा romantic गीत" />
+              </label>
+              <label class="music-field">गाने का नाम (वैकल्पिक)
+                <input name="title" maxlength="200" placeholder="खाली छोड़ें तो AI नाम सुझाएगा" />
+              </label>
+              <label class="music-field">गाने की आवाज़
+                <select name="singer">
+                  <option value="male" selected>गहरी पुरुष आवाज़</option>
+                  <option value="female">महिला आवाज़</option>
+                  <option value="duet">पुरुष और महिला duet</option>
+                </select>
+              </label>
+              <label class="music-field">अवधि (सेकंड)
+                <input name="duration" type="number" min="10" max="60" value="30" required />
+              </label>
+              <label class="music-field full-width">अपने lyrics (वैकल्पिक)
+                <textarea name="lyrics" maxlength="8000" placeholder="खाली छोड़ें तो आपके prompt से original Hindi lyrics बनेंगे।"></textarea>
+              </label>
+              <button class="song-generate-submit" id="song-generate-submit" type="submit">♫ गाना बनाएँ</button>
+            </form>
+            <p class="song-generator-status" id="song-generator-status" role="status" aria-live="polite"></p>
+          </section>
+          <h3 class="music-library-heading">अपनी audio या जानकारी जोड़ें</h3>
+          <form class="music-form" id="music-form">
+            <label class="music-field">गाने का नाम *<input name="title" maxlength="200" required /></label>
+            <label class="music-field">कलाकार / गायक *<input name="artist" maxlength="200" required /></label>
+            <label class="music-field">Album<input name="album" maxlength="200" /></label>
+            <label class="music-field">Genre<input name="genre" maxlength="100" placeholder="जैसे: Pop, Classical" /></label>
+            <label class="music-field">Release year<input name="release_year" type="number" min="1880" max="2100" /></label>
+            <label class="music-field">Track number<input name="track_number" type="number" min="1" max="9999" /></label>
+            <label class="music-field">भाषा<input name="language" maxlength="80" placeholder="जैसे: Hindi" /></label>
+            <label class="music-field">Mood<input name="mood" maxlength="100" placeholder="जैसे: शांत, जोशीला" /></label>
+            <label class="music-field">Composer<input name="composer" maxlength="200" /></label>
+            <label class="music-field">Lyricist<input name="lyricist" maxlength="200" /></label>
+            <label class="music-field">Music label<input name="label" maxlength="200" /></label>
+            <label class="music-field">Audio फ़ाइल (वैकल्पिक)<input name="audio" type="file" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac" /></label>
+            <label class="music-field full-width">अतिरिक्त जानकारी<textarea name="notes" maxlength="2000" placeholder="जैसे: पसंदीदा version, recording या अपनी टिप्पणियाँ"></textarea></label>
+            <button class="music-submit" id="music-submit" type="submit">＋ गाना जोड़ें</button>
+          </form>
+          <p class="music-status" id="music-status" role="status" aria-live="polite"></p>
+          <div class="music-library-header">
+            <h3>आपके गाने</h3>
+            <input class="music-search" id="music-search" type="search" placeholder="गाना, कलाकार या album खोजें" aria-label="म्यूज़िक लाइब्रेरी खोजें" />
+          </div>
+          <div class="music-track-list" id="music-track-list" aria-live="polite"></div>
+        </section>
+      </main>
+
+      <form class="composer" id="composer">
+        <div class="input-card">
+          <textarea id="question" rows="1" maxlength="10000" placeholder="यहाँ अपना सवाल लिखें..." aria-label="अपना सवाल लिखें"></textarea>
+          <button class="icon-button" id="mic" type="button" aria-label="वॉइस कॉल शुरू करें" title="वॉइस कॉल शुरू करें" aria-pressed="false">📞</button>
+          <button class="send-button" id="send" type="submit" aria-label="भेजें" title="भेजें">➤</button>
+        </div>
+        <div class="voice-options">
+          <label for="voice-style-select">आवाज़ का अंदाज़</label>
+          <select id="voice-style-select" aria-label="आवाज़ का अंदाज़ चुनें">
+            <option value="warm-feminine">गर्मजोशी भरी feminine</option>
+            <option value="deep-masculine">गहरी, confident Indian male</option>
+          </select>
+          <label for="voice-select">जवाब की आवाज़</label>
+          <select id="voice-select" aria-label="जवाब की आवाज़ चुनें"></select>
+        </div>
+        <div class="voice-tools" aria-label="आवाज़ controls">
+          <button class="voice-tool-button" id="test-voice" type="button">🔊 आवाज़ जाँचें</button>
+          <button class="voice-tool-button" id="refresh-voices" type="button">↻ आवाज़ें खोजें</button>
+          <button class="voice-tool-button" id="install-voice" type="button">↓ Windows voice जोड़ें</button>
+        </div>
+        <p class="voice-status" id="voice-status" role="status" aria-live="polite"></p>
+        <section class="voice-sample" aria-label="अपनी voice recording">
+          <strong>अपनी voice recording जोड़ें</strong>
+          <p class="voice-sample-note">अपनी आवाज़ रिकॉर्ड करें या audio चुनकर sample की तरह save करें। इसे सुन और हटा सकते हैं। यह अभी AI की generated voice या voice clone नहीं बनाती।</p>
+          <div class="voice-sample-actions">
+            <button id="record-voice-sample" type="button">● रिकॉर्ड (15 सेकंड)</button>
+            <button id="stop-voice-sample" type="button" disabled>■ रोकें</button>
+            <input id="voice-sample-file" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.flac,.webm" aria-label="अपनी voice recording चुनें" />
+            <button id="save-voice-sample" type="button" disabled>अपना sample save करें</button>
+            <button id="delete-voice-sample" type="button" hidden>Sample हटाएँ</button>
+          </div>
+          <audio id="voice-sample-player" controls preload="none" hidden></audio>
+          <p id="voice-sample-status" class="voice-status" role="status" aria-live="polite"></p>
+        </section>
+        <p class="hint" id="hint">Enter दबाकर भेजें · Shift + Enter से नई पंक्ति</p>
+      </form>
+    </div>
+
+    <script>
+      const chat = document.querySelector("#chat");
+      const welcome = document.querySelector("#welcome");
+      const form = document.querySelector("#composer");
+      const textarea = document.querySelector("#question");
+      const sendButton = document.querySelector("#send");
+      const micButton = document.querySelector("#mic");
+      const hint = document.querySelector("#hint");
+      const voiceSelect = document.querySelector("#voice-select");
+      const voiceStyleSelect = document.querySelector("#voice-style-select");
+      const voiceStatus = document.querySelector("#voice-status");
+      const testVoiceButton = document.querySelector("#test-voice");
+      const refreshVoicesButton = document.querySelector("#refresh-voices");
+      const installVoiceButton = document.querySelector("#install-voice");
+      const recordVoiceSampleButton = document.querySelector("#record-voice-sample");
+      const stopVoiceSampleButton = document.querySelector("#stop-voice-sample");
+      const voiceSampleFileInput = document.querySelector("#voice-sample-file");
+      const saveVoiceSampleButton = document.querySelector("#save-voice-sample");
+      const deleteVoiceSampleButton = document.querySelector("#delete-voice-sample");
+      const voiceSamplePlayer = document.querySelector("#voice-sample-player");
+      const voiceSampleStatus = document.querySelector("#voice-sample-status");
+      const assistantTab = document.querySelector("#assistant-tab");
+      const musicTab = document.querySelector("#music-tab");
+      const assistantPanel = document.querySelector("#assistant-panel");
+      const musicPanel = document.querySelector("#music-panel");
+      const songGeneratorForm = document.querySelector("#song-generator-form");
+      const songGenerateSubmit = document.querySelector("#song-generate-submit");
+      const songGeneratorStatus = document.querySelector("#song-generator-status");
+      const musicForm = document.querySelector("#music-form");
+      const musicSubmit = document.querySelector("#music-submit");
+      const musicStatus = document.querySelector("#music-status");
+      const musicSearch = document.querySelector("#music-search");
+      const musicTrackList = document.querySelector("#music-track-list");
+      const conversation = [];
+      const voicePreferenceKey = "sweetheart-hindi-voice-v2";
+      const voiceStylePreferenceKey = "sweetheart-voice-style-v1";
+      const musicTracks = [];
+      let musicSearchQuery = "";
+      let recognition;
+      let voiceCallActive = false;
+      let isListening = false;
+      let isAssistantSpeaking = false;
+      let currentUtterance;
+      let finishCurrentSpeech;
+      let listenTimer;
+      let voiceSampleRecorder;
+      let voiceSampleStream;
+      let voiceSampleChunks = [];
+      let voiceSampleBlob;
+      let voiceSampleUrl;
+      let voiceSampleRecordTimer;
+
+      voiceStyleSelect.value = localStorage.getItem(voiceStylePreferenceKey) || "warm-feminine";
+
+      function selectTab(tab) {
+        const showMusic = tab === "music";
+        assistantTab.setAttribute("aria-selected", String(!showMusic));
+        musicTab.setAttribute("aria-selected", String(showMusic));
+        assistantPanel.hidden = showMusic;
+        musicPanel.hidden = !showMusic;
+        document.querySelector("#composer").hidden = showMusic;
+        if (showMusic) {
+          void loadMusicTracks();
+          void loadSongGeneratorStatus();
+        }
+        else textarea.focus();
+      }
+
+      assistantTab.addEventListener("click", () => selectTab("assistant"));
+      musicTab.addEventListener("click", () => selectTab("music"));
+
+      async function requestMusic(url, options) {
+        const response = await fetch(url, options);
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "म्यूज़िक लाइब्रेरी का अनुरोध पूरा नहीं हुआ।");
+        return result;
+      }
+
+      function formatDuration(seconds) {
+        if (!Number.isInteger(seconds) || seconds < 0) return "";
+        return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+      }
+
+      function readAudioDuration(file) {
+        return new Promise((resolve) => {
+          const audio = new Audio();
+          const objectUrl = URL.createObjectURL(file);
+          let settled = false;
+          const finish = (duration) => {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(timeout);
+            audio.removeAttribute("src");
+            audio.load();
+            URL.revokeObjectURL(objectUrl);
+            resolve(duration);
+          };
+          const timeout = window.setTimeout(() => finish(null), 8000);
+          audio.addEventListener("loadedmetadata", () => {
+            finish(Number.isFinite(audio.duration) ? Math.round(audio.duration) : null);
+          }, { once: true });
+          audio.addEventListener("error", () => finish(null), { once: true });
+          audio.src = objectUrl;
+        });
+      }
+
+      function renderMusicTracks() {
+        musicTrackList.replaceChildren();
+        const visibleTracks = musicTracks.filter((track) => {
+          const searchable = [
+            track.title, track.artist, track.album, track.genre, track.mood,
+            track.generation_prompt, track.lyrics,
+          ].join(" ").toLocaleLowerCase();
+          return searchable.includes(musicSearchQuery);
+        });
+
+        if (visibleTracks.length === 0) {
+          const empty = document.createElement("p");
+          empty.className = "music-empty";
+          empty.textContent = musicTracks.length
+            ? "इस खोज से कोई गाना नहीं मिला।"
+            : "अभी कोई गाना नहीं है। ऊपर दिए गए फ़ॉर्म से अपना गाना जोड़ें।";
+          musicTrackList.append(empty);
+          return;
+        }
+
+        for (const track of visibleTracks) {
+          const card = document.createElement("article");
+          card.className = "music-track";
+          const details = document.createElement("div");
+          const title = document.createElement("h4");
+          title.textContent = track.title;
+          details.append(title);
+
+          const primary = [track.artist, track.album, track.release_year]
+            .filter(Boolean)
+            .join(" · ");
+          if (primary) {
+            const line = document.createElement("p");
+            line.textContent = primary;
+            details.append(line);
+          }
+
+          const secondary = [
+            track.genre && `Genre: ${track.genre}`,
+            track.language && `भाषा: ${track.language}`,
+            track.mood && `Mood: ${track.mood}`,
+            formatDuration(track.duration_seconds) && `अवधि: ${formatDuration(track.duration_seconds)}`,
+            track.track_number && `Track ${track.track_number}`,
+          ].filter(Boolean);
+          if (secondary.length) {
+            const line = document.createElement("p");
+            line.textContent = secondary.join(" · ");
+            details.append(line);
+          }
+
+          const credits = [
+            track.composer && `Composer: ${track.composer}`,
+            track.lyricist && `Lyricist: ${track.lyricist}`,
+            track.label && `Label: ${track.label}`,
+          ].filter(Boolean);
+          if (credits.length) {
+            const line = document.createElement("p");
+            line.textContent = credits.join(" · ");
+            details.append(line);
+          }
+
+          if (track.notes) {
+            const notes = document.createElement("p");
+            notes.textContent = `नोट: ${track.notes}`;
+            details.append(notes);
+          }
+
+          if (track.generation_prompt) {
+            const prompt = document.createElement("p");
+            prompt.textContent = `AI prompt: ${track.generation_prompt}`;
+            details.append(prompt);
+          }
+
+          if (track.has_audio) {
+            const player = document.createElement("audio");
+            player.controls = true;
+            player.preload = "none";
+            player.src = `/api/music/${encodeURIComponent(track.id)}/audio`;
+            player.setAttribute("aria-label", `${track.title} चलाएँ`);
+            player.addEventListener("error", () => {
+              musicStatus.textContent = `“${track.title}” की audio फ़ाइल नहीं चल सकी।`;
+            });
+            details.append(player);
+            const download = document.createElement("a");
+            download.className = "music-download";
+            download.href = `/api/music/${encodeURIComponent(track.id)}/audio`;
+            download.download = track.filename || `${track.title}.audio`;
+            download.textContent = "↓ Audio डाउनलोड करें";
+            details.append(download);
+          } else {
+            const noAudio = document.createElement("p");
+            noAudio.textContent = track.filename
+              ? `Audio संलग्न नहीं है (${track.filename}).`
+              : "इस entry के साथ audio फ़ाइल नहीं जोड़ी गई।";
+            details.append(noAudio);
+          }
+
+          if (track.lyrics) {
+            const lyrics = document.createElement("details");
+            const summary = document.createElement("summary");
+            summary.textContent = "गीत के बोल देखें";
+            const text = document.createElement("p");
+            text.textContent = track.lyrics;
+            lyrics.append(summary, text);
+            details.append(lyrics);
+          }
+
+          const remove = document.createElement("button");
+          remove.className = "music-delete";
+          remove.type = "button";
+          remove.textContent = "हटाएँ";
+          remove.setAttribute("aria-label", `${track.title} हटाएँ`);
+          remove.addEventListener("click", () => void deleteMusicTrack(track));
+          card.append(details, remove);
+          musicTrackList.append(card);
+        }
+      }
+
+      async function loadMusicTracks() {
+        musicStatus.textContent = "लाइब्रेरी load हो रही है…";
+        try {
+          const result = await requestMusic("/api/music");
+          musicTracks.splice(0, musicTracks.length, ...result.tracks);
+          renderMusicTracks();
+          musicStatus.textContent = "";
+        } catch (error) {
+          musicStatus.textContent = error.message || "म्यूज़िक लाइब्रेरी load नहीं हो सकी।";
+          musicTrackList.replaceChildren();
+        }
+      }
+
+      async function loadSongGeneratorStatus() {
+        try {
+          const result = await requestMusic("/api/song-generator");
+          if (!result.installed) {
+            songGeneratorStatus.textContent = "Local गीत बनाने वाला model अभी install नहीं है। Setup के लिए README में “Local song generator” देखें।";
+          } else if (result.models_loaded) {
+            songGeneratorStatus.textContent = "Local song model तैयार है। गाना बनाने के लिए prompt भेजें।";
+          } else {
+            songGeneratorStatus.textContent = "Local CPU song model install है। पहली बार generate करने पर लगभग 10 GB model download होगा और generation धीमी हो सकती है।";
+          }
+        } catch (error) {
+          songGeneratorStatus.textContent = error.message || "Local song model की स्थिति नहीं पढ़ी जा सकी।";
+        }
+      }
+
+      async function waitForSongGeneration(jobId) {
+        while (true) {
+          await new Promise((resolve) => window.setTimeout(resolve, 3000));
+          const job = await requestMusic(`/api/music/generate/${encodeURIComponent(jobId)}`);
+          songGeneratorStatus.textContent = job.message || "गाना तैयार हो रहा है…";
+          if (job.status === "completed") {
+            await loadMusicTracks();
+            return;
+          }
+          if (job.status === "failed") {
+            throw new Error(job.error || job.message || "गाना नहीं बन सका।");
+          }
+        }
+      }
+
+      songGeneratorForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!songGeneratorForm.reportValidity()) return;
+
+        const values = new FormData(songGeneratorForm);
+        songGenerateSubmit.disabled = true;
+        songGeneratorStatus.textContent = "गाना बनाने का अनुरोध भेजा जा रहा है…";
+        try {
+          const result = await requestMusic("/api/music/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              prompt: values.get("prompt").trim(),
+              title: values.get("title").trim(),
+              singer: values.get("singer"),
+              duration: Number(values.get("duration")),
+              lyrics: values.get("lyrics").trim(),
+            }),
+          });
+          await waitForSongGeneration(result.job_id);
+          songGeneratorForm.reset();
+          songGeneratorStatus.textContent = "गाना तैयार है, आपकी library में save है। उसे चलाएँ या डाउनलोड करें।";
+        } catch (error) {
+          songGeneratorStatus.textContent = error.message || "गाना नहीं बन सका।";
+        } finally {
+          songGenerateSubmit.disabled = false;
+        }
+      });
+
+      async function deleteMusicTrack(track) {
+        if (!window.confirm(`“${track.title}” को म्यूज़िक लाइब्रेरी से हटाएँ?`)) return;
+        musicStatus.textContent = "गाना हटाया जा रहा है…";
+        try {
+          await requestMusic(`/api/music/${encodeURIComponent(track.id)}`, { method: "DELETE" });
+          const index = musicTracks.findIndex((item) => item.id === track.id);
+          if (index !== -1) musicTracks.splice(index, 1);
+          renderMusicTracks();
+          musicStatus.textContent = "गाना और उसकी local audio फ़ाइल हटा दी गई।";
+        } catch (error) {
+          musicStatus.textContent = error.message || "गाना हटाया नहीं जा सका।";
+        }
+      }
+
+      function getAudioContentType(file) {
+        if (/^audio\/[a-z0-9.+-]+$/i.test(file.type)) return file.type;
+        const extension = (file.name || "").split(".").pop().toLowerCase();
+        const typesByExtension = {
+          aac: "audio/aac",
+          flac: "audio/flac",
+          m4a: "audio/mp4",
+          mp3: "audio/mpeg",
+          ogg: "audio/ogg",
+          wav: "audio/wav",
+          webm: "audio/webm",
+        };
+        return typesByExtension[extension] || "";
+      }
+
+      musicForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!musicForm.reportValidity()) return;
+
+        const values = new FormData(musicForm);
+        const file = values.get("audio");
+        if (file instanceof File && file.size > 50 * 1024 * 1024) {
+          musicStatus.textContent = "Audio फ़ाइल 50 MB से छोटी होनी चाहिए।";
+          return;
+        }
+        if (file instanceof File && file.size > 0 && !getAudioContentType(file)) {
+          musicStatus.textContent = "यह audio format पहचाना नहीं गया। MP3, M4A, AAC, WAV, OGG या FLAC चुनें।";
+          return;
+        }
+
+        musicSubmit.disabled = true;
+        musicStatus.textContent = "गाना save हो रहा है…";
+        try {
+          const duration = file instanceof File && file.size > 0
+            ? await readAudioDuration(file)
+            : null;
+          const payload = {
+            title: values.get("title").trim(),
+            artist: values.get("artist").trim(),
+            album: values.get("album").trim(),
+            genre: values.get("genre").trim(),
+            release_year: values.get("release_year") ? Number(values.get("release_year")) : null,
+            track_number: values.get("track_number") ? Number(values.get("track_number")) : null,
+            language: values.get("language").trim(),
+            mood: values.get("mood").trim(),
+            composer: values.get("composer").trim(),
+            lyricist: values.get("lyricist").trim(),
+            label: values.get("label").trim(),
+            notes: values.get("notes").trim(),
+            filename: file instanceof File ? file.name : "",
+            duration_seconds: duration,
+          };
+          const created = await requestMusic("/api/music", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          if (file instanceof File && file.size > 0) {
+            try {
+              await requestMusic(`/api/music/${encodeURIComponent(created.track.id)}/audio`, {
+                method: "PUT",
+                headers: { "Content-Type": getAudioContentType(file) },
+                body: file,
+              });
+            } catch (audioError) {
+              try {
+                await requestMusic(`/api/music/${encodeURIComponent(created.track.id)}`, {
+                  method: "DELETE",
+                });
+              } catch (cleanupError) {
+                await loadMusicTracks();
+                throw new Error(
+                  `Audio save नहीं हुई: ${audioError.message} गाने की जानकारी library में रह गई; cleanup भी नहीं हुआ: ${cleanupError.message}`,
+                );
+              }
+              throw audioError;
+            }
+          }
+
+          musicForm.reset();
+          await loadMusicTracks();
+          musicStatus.textContent = file instanceof File && file.size > 0
+            ? "गाने की जानकारी और audio इसी PC पर save हो गई।"
+            : "गाने की जानकारी इसी PC पर save हो गई।";
+        } catch (error) {
+          musicStatus.textContent = error.message || "गाना save नहीं हो सका।";
+        } finally {
+          musicSubmit.disabled = false;
+        }
+      });
+
+      musicSearch.addEventListener("input", () => {
+        musicSearchQuery = musicSearch.value.trim().toLocaleLowerCase();
+        renderMusicTracks();
+      });
+
+      function updateVoiceCallButton() {
+        micButton.setAttribute("aria-pressed", String(voiceCallActive));
+        micButton.setAttribute(
+          "aria-label",
+          voiceCallActive ? "वॉइस कॉल बंद करें" : "वॉइस कॉल शुरू करें",
+        );
+        micButton.title = voiceCallActive ? "वॉइस कॉल बंद करें" : "वॉइस कॉल शुरू करें";
+        micButton.textContent = voiceCallActive ? "⏹" : "📞";
+      }
+
+      function scheduleVoiceListening() {
+        window.clearTimeout(listenTimer);
+        listenTimer = window.setTimeout(startVoiceListening, 250);
+      }
+
+      function startVoiceListening() {
+        if (!voiceCallActive || sendButton.disabled || isAssistantSpeaking || isListening) return;
+        try {
+          recognition.start();
+        } catch (error) {
+          if (error.name !== "InvalidStateError") {
+            voiceCallActive = false;
+            updateVoiceCallButton();
+            hint.textContent = "माइक शुरू नहीं हो सका। माइक की अनुमति जाँचें और फिर कोशिश करें।";
+          }
+        }
+      }
+
+      function stopAssistantSpeech() {
+        const finish = finishCurrentSpeech;
+        finishCurrentSpeech = undefined;
+        currentUtterance = undefined;
+        isAssistantSpeaking = false;
+        if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+        if (finish) finish(false);
+      }
+
+      function getAvailableVoices() {
+        const voices = window.speechSynthesis.getVoices();
+        const femaleVoiceName = /\b(swara|zira|kalpana|aditi|veena|heera|female|feminine|woman|priya|neha|sangeeta|raveena)\b/i;
+        const maleVoiceName = /\b(male|masculine|man|madhur|hemant|ravi|arjun|amit|rahul|david|mark)\b/i;
+        const preferredVoiceName = voiceStyleSelect.value === "deep-masculine"
+          ? maleVoiceName
+          : femaleVoiceName;
+        return voices.sort((first, second) => {
+          const firstScore = (preferredVoiceName.test(first.name) ? 10 : 0)
+            + (/^hi(?:-|$)/i.test(first.lang) ? 5 : 0)
+            + (/^hi-IN$/i.test(first.lang) ? 2 : 0)
+            + (first.default ? 1 : 0);
+          const secondScore = (preferredVoiceName.test(second.name) ? 10 : 0)
+            + (/^hi(?:-|$)/i.test(second.lang) ? 5 : 0)
+            + (/^hi-IN$/i.test(second.lang) ? 2 : 0)
+            + (second.default ? 1 : 0);
+          return secondScore - firstScore;
+        });
+      }
+
+      function getVoiceKey(voice) {
+        return `${voice.voiceURI || voice.name}|${voice.lang}`;
+      }
+
+      function populateVoiceOptions() {
+        const voices = getAvailableVoices().slice(0, 3);
+        const savedVoice = localStorage.getItem(voicePreferenceKey);
+        voiceSelect.replaceChildren();
+
+        if (voices.length === 0) {
+          const option = document.createElement("option");
+          option.textContent = "इस device पर speech voice नहीं मिली";
+          option.value = "";
+          voiceSelect.append(option);
+          voiceSelect.disabled = true;
+          testVoiceButton.disabled = true;
+          voiceStatus.textContent = "इस device पर कोई speech voice उपलब्ध नहीं है। Windows में Hindi speech voice जोड़ें और फिर आवाज़ें खोजें।";
+          return;
+        }
+
+        voiceSelect.disabled = false;
+        testVoiceButton.disabled = false;
+        for (const voice of voices) {
+          const option = document.createElement("option");
+          option.value = getVoiceKey(voice);
+          const languageNote = /^hi(?:-|$)/i.test(voice.lang) ? " · Hindi" : " · fallback";
+          option.textContent = `${voice.name} (${voice.lang}${languageNote})`;
+          voiceSelect.append(option);
+        }
+
+        voiceSelect.value = voices.some((voice) => getVoiceKey(voice) === savedVoice)
+          ? savedVoice
+          : getVoiceKey(voices[0]);
+        updateVoiceAvailability();
+      }
+
+      function selectSpeechVoice() {
+        const voices = getAvailableVoices();
+        return voices.find((voice) => getVoiceKey(voice) === voiceSelect.value)
+          || voices[0];
+      }
+
+      function updateVoiceAvailability() {
+        const voice = selectSpeechVoice();
+        if (!voice) return;
+        if (/^hi(?:-|$)/i.test(voice.lang)) {
+          voiceStatus.textContent = `चुनी गई आवाज़: ${voice.name} (${voice.lang})`;
+        } else {
+          voiceStatus.textContent = `${voice.name} (${voice.lang}) चल सकती है, लेकिन यह Hindi voice नहीं है; Hindi pronunciation अलग हो सकती है। Hindi voice जोड़ने के लिए Windows voice बटन दबाएँ।`;
+        }
+      }
+
+      function waitForSpeechVoice() {
+        const voice = selectSpeechVoice();
+        if (voice) return Promise.resolve(voice);
+
+        return new Promise((resolve) => {
+          const synthesis = window.speechSynthesis;
+          const finish = (availableVoice) => {
+            window.clearTimeout(timeout);
+            synthesis.removeEventListener("voiceschanged", onVoicesChanged);
+            resolve(availableVoice);
+          };
+          const onVoicesChanged = () => {
+            const availableVoice = selectSpeechVoice();
+            if (availableVoice) finish(availableVoice);
+          };
+          const timeout = window.setTimeout(() => finish(undefined), 3000);
+          synthesis.addEventListener("voiceschanged", onVoicesChanged);
+        });
+      }
+
+      async function requestVoiceSample(url, options) {
+        const response = await fetch(url, options);
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Voice recording request पूरा नहीं हुआ।");
+        return result;
+      }
+
+      function showVoiceSample(blob) {
+        if (voiceSampleUrl) URL.revokeObjectURL(voiceSampleUrl);
+        voiceSampleBlob = blob;
+        voiceSampleUrl = URL.createObjectURL(blob);
+        voiceSamplePlayer.src = voiceSampleUrl;
+        voiceSamplePlayer.hidden = false;
+        saveVoiceSampleButton.disabled = !blob.size;
+      }
+
+      async function loadVoiceSample() {
+        try {
+          const sample = await requestVoiceSample("/api/voice-sample");
+          if (!sample.exists) {
+            deleteVoiceSampleButton.hidden = true;
+            voiceSamplePlayer.hidden = true;
+            return;
+          }
+          voiceSamplePlayer.src = "/api/voice-sample/audio";
+          voiceSamplePlayer.hidden = false;
+          deleteVoiceSampleButton.hidden = false;
+          voiceSampleStatus.textContent = `आपकी voice recording save है (${sample.filename}, ${Math.ceil(sample.size_bytes / 1024)} KB)।`;
+        } catch (error) {
+          voiceSampleStatus.textContent = error.message || "अपनी voice recording नहीं पढ़ी जा सकी।";
+        }
+      }
+
+      function stopVoiceSampleRecording() {
+        window.clearTimeout(voiceSampleRecordTimer);
+        if (voiceSampleRecorder?.state === "recording") voiceSampleRecorder.stop();
+      }
+
+      async function startVoiceSampleRecording() {
+        if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+          voiceSampleStatus.textContent = "इस browser/app में microphone recording उपलब्ध नहीं है। Audio file चुनकर upload करें।";
+          return;
+        }
+        try {
+          voiceSampleStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          voiceSampleChunks = [];
+          const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
+            .find((type) => MediaRecorder.isTypeSupported(type));
+          voiceSampleRecorder = new MediaRecorder(
+            voiceSampleStream,
+            mimeType ? { mimeType } : undefined,
+          );
+          voiceSampleRecorder.addEventListener("dataavailable", (event) => {
+            if (event.data.size) voiceSampleChunks.push(event.data);
+          });
+          voiceSampleRecorder.addEventListener("stop", () => {
+            const blob = new Blob(voiceSampleChunks, {
+              type: voiceSampleRecorder.mimeType || "audio/webm",
+            });
+            voiceSampleStream?.getTracks().forEach((track) => track.stop());
+            voiceSampleStream = undefined;
+            recordVoiceSampleButton.disabled = false;
+            stopVoiceSampleButton.disabled = true;
+            if (!blob.size) {
+              voiceSampleStatus.textContent = "कोई audio record नहीं हुई। Microphone permission जाँचें और फिर प्रयास करें।";
+              return;
+            }
+            showVoiceSample(blob);
+            voiceSampleStatus.textContent = "Recording तैयार है। इसे सुनें और फिर sample save करें।";
+          }, { once: true });
+          voiceSampleRecorder.start();
+          recordVoiceSampleButton.disabled = true;
+          stopVoiceSampleButton.disabled = false;
+          voiceSampleStatus.textContent = "Recording चल रही है… अधिकतम 15 सेकंड।";
+          voiceSampleRecordTimer = window.setTimeout(stopVoiceSampleRecording, 15000);
+        } catch (error) {
+          voiceSampleStream?.getTracks().forEach((track) => track.stop());
+          voiceSampleStream = undefined;
+          recordVoiceSampleButton.disabled = false;
+          stopVoiceSampleButton.disabled = true;
+          voiceSampleStatus.textContent = `Recording शुरू नहीं हुई: ${error.message || "microphone permission जाँचें।"}`;
+        }
+      }
+
+      function selectVoiceSampleFile() {
+        const file = voiceSampleFileInput.files?.[0];
+        if (!file) return;
+        if (file.size > 25 * 1024 * 1024) {
+          voiceSampleStatus.textContent = "Voice recording 25 MB से छोटी होनी चाहिए।";
+          voiceSampleFileInput.value = "";
+          return;
+        }
+        const contentType = getAudioContentType(file);
+        if (!contentType) {
+          voiceSampleStatus.textContent = "यह audio format supported नहीं है। WAV, MP3, M4A, AAC, OGG, FLAC या WebM चुनें।";
+          voiceSampleFileInput.value = "";
+          return;
+        }
+        showVoiceSample(file);
+        voiceSampleStatus.textContent = "Recording चुनी गई है। इसे सुनें और फिर sample save करें।";
+      }
+
+      async function saveVoiceSample() {
+        if (!voiceSampleBlob || !voiceSampleBlob.size) return;
+        if (voiceSampleBlob.size > 25 * 1024 * 1024) {
+          voiceSampleStatus.textContent = "Voice recording 25 MB से छोटी होनी चाहिए।";
+          return;
+        }
+        const contentType = voiceSampleBlob.type.split(";", 1)[0];
+        if (!/^audio\/[a-z0-9.+-]+$/i.test(contentType)) {
+          voiceSampleStatus.textContent = "चुनी गई recording का audio format पहचाना नहीं गया।";
+          return;
+        }
+        saveVoiceSampleButton.disabled = true;
+        voiceSampleStatus.textContent = "Voice sample इसी PC पर save हो रहा है…";
+        try {
+          await requestVoiceSample("/api/voice-sample", {
+            method: "PUT",
+            headers: {
+              "Content-Type": contentType,
+              "X-Voice-Sample-Filename": "voice-recording",
+            },
+            body: voiceSampleBlob,
+          });
+          voiceSampleFileInput.value = "";
+          voiceSampleBlob = undefined;
+          voiceSamplePlayer.src = "/api/voice-sample/audio";
+          voiceSamplePlayer.hidden = false;
+          deleteVoiceSampleButton.hidden = false;
+          voiceSampleStatus.textContent = "आपका voice sample local app data में save हो गया। यह अभी AI की generated voice नहीं बनेगा।";
+        } catch (error) {
+          saveVoiceSampleButton.disabled = false;
+          voiceSampleStatus.textContent = error.message || "Voice sample save नहीं हो सका।";
+        }
+      }
+
+      async function deleteVoiceSample() {
+        if (!window.confirm("अपनी saved voice recording हटाएँ?")) return;
+        try {
+          await requestVoiceSample("/api/voice-sample", { method: "DELETE" });
+          voiceSamplePlayer.pause();
+          voiceSamplePlayer.removeAttribute("src");
+          voiceSamplePlayer.hidden = true;
+          deleteVoiceSampleButton.hidden = true;
+          voiceSampleStatus.textContent = "आपकी voice recording हटाई गई।";
+        } catch (error) {
+          voiceSampleStatus.textContent = error.message || "Voice sample हटाया नहीं जा सका।";
+        }
+      }
+
+      async function openWindowsVoiceSettings() {
+        installVoiceButton.disabled = true;
+        voiceStatus.textContent = "Windows Speech settings खोली जा रही हैं…";
+        try {
+          const result = await requestVoiceSample("/api/open-voice-settings", { method: "POST" });
+          voiceStatus.textContent = `${result.message} वहाँ Speech → Voices → Add voices में Hindi खोजें। Install के बाद वापस आकर ‘आवाज़ें खोजें’ दबाएँ; अगर न दिखे तो app restart करें।`;
+        } catch (error) {
+          voiceStatus.textContent = error.message || "Windows Speech settings नहीं खुलीं। Settings manually खोलें।";
+        } finally {
+          installVoiceButton.disabled = false;
+        }
+      }
+
+      function testSpeechOutput() {
+        const voice = selectSpeechVoice();
+        if (!voice) {
+          voiceStatus.textContent = "इस device पर speech voice नहीं मिली। पहले Windows voice जोड़ें।";
+          return;
+        }
+        void speakHindi(
+          /^hi(?:-|$)/i.test(voice.lang)
+            ? "नमस्ते, मैं Sweetheart हूँ। यह आवाज़ की जाँच है।"
+            : "Hello, I am Sweetheart. This is a voice test. Hindi voice is not installed yet.",
+        );
+      }
+
+      recordVoiceSampleButton.addEventListener("click", () => void startVoiceSampleRecording());
+      stopVoiceSampleButton.addEventListener("click", stopVoiceSampleRecording);
+      voiceSampleFileInput.addEventListener("change", selectVoiceSampleFile);
+      saveVoiceSampleButton.addEventListener("click", () => void saveVoiceSample());
+      deleteVoiceSampleButton.addEventListener("click", () => void deleteVoiceSample());
+      void loadVoiceSample();
+
+      function addMessage(role, text, isError = false) {
+        const message = document.createElement("article");
+        message.className = `message ${role}${isError ? " error" : ""}`;
+        const content = document.createElement("div");
+        content.textContent = text;
+        message.append(content);
+
+        if (role === "assistant" && !isError && "speechSynthesis" in window) {
+          const tools = document.createElement("div");
+          tools.className = "message-tools";
+          const speak = document.createElement("button");
+          speak.type = "button";
+          speak.className = "speak-answer";
+          speak.textContent = "🔊 सुनें";
+          speak.addEventListener("click", () => speakHindi(text));
+          tools.append(speak);
+          message.append(tools);
+        }
+
+        chat.append(message);
+        message.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        return message;
+      }
+
+      async function speakHindi(text) {
+        if (!("speechSynthesis" in window)) {
+          voiceStatus.textContent = "इस app में text-to-speech सुविधा उपलब्ध नहीं है।";
+          return false;
+        }
+        stopAssistantSpeech();
+        try {
+          const voice = await waitForSpeechVoice();
+          if (!voice) {
+            voiceStatus.textContent = "कोई speech voice नहीं मिली। Windows में Hindi speech voice जोड़कर ऐप restart करें।";
+            return false;
+          }
+          const utterance = new SpeechSynthesisUtterance(text);
+          const isHindiVoice = /^hi(?:-|$)/i.test(voice.lang);
+          const deepMasculine = voiceStyleSelect.value === "deep-masculine";
+          utterance.voice = voice;
+          utterance.lang = isHindiVoice ? "hi-IN" : voice.lang;
+          utterance.rate = deepMasculine ? 0.92 : 0.96;
+          utterance.pitch = deepMasculine ? 0.82 : 1.08;
+          utterance.volume = 1;
+          currentUtterance = utterance;
+          isAssistantSpeaking = true;
+
+          return await new Promise((resolve) => {
+            let started = false;
+            let timeout;
+            let startWatchdog;
+            const finish = (spoken, message) => {
+              if (currentUtterance !== utterance) return;
+              window.clearTimeout(startWatchdog);
+              window.clearTimeout(timeout);
+              finishCurrentSpeech = undefined;
+              currentUtterance = undefined;
+              isAssistantSpeaking = false;
+              if (message) voiceStatus.textContent = message;
+              resolve(spoken);
+              if (voiceCallActive) scheduleVoiceListening();
+            };
+            startWatchdog = window.setTimeout(() => {
+              if (currentUtterance !== utterance || started) return;
+              window.speechSynthesis.cancel();
+              finish(
+                false,
+                "आवाज़ शुरू नहीं हुई। नीचे ‘आवाज़ जाँचें’ दबाएँ; फिर भी न चले तो Windows में speech voice जोड़ें।",
+              );
+            }, 12000);
+            finishCurrentSpeech = (spoken) => {
+              window.clearTimeout(startWatchdog);
+              window.clearTimeout(timeout);
+              finishCurrentSpeech = undefined;
+              resolve(spoken);
+            };
+            utterance.addEventListener("start", () => {
+              started = true;
+              window.clearTimeout(startWatchdog);
+              voiceStatus.textContent = `Sweetheart बोल रहा है — ${voice.name} (${voice.lang})`;
+              timeout = window.setTimeout(() => {
+                if (currentUtterance !== utterance) return;
+                window.speechSynthesis.cancel();
+                finish(false, "आवाज़ बीच में रुक गई। फिर से सुनें या Windows voice जाँचें।");
+              }, Math.max(30000, text.length * 250));
+            }, { once: true });
+            utterance.addEventListener("end", () => {
+              finish(
+                true,
+                isHindiVoice
+                  ? `जवाब पूरा हुआ — ${voice.name}`
+                  : `आवाज़ पूरी हुई — ${voice.name} English voice है; Hindi बोलने के लिए Windows में Hindi speech voice जोड़ें।`,
+              );
+            }, { once: true });
+            utterance.addEventListener("error", (event) => {
+              const errorMessage = event.error === "not-allowed"
+                ? "Browser ने आवाज़ चलाने की अनुमति नहीं दी। ‘आवाज़ जाँचें’ दबाएँ या app की audio settings जाँचें।"
+                : `आवाज़ नहीं चल पाई (${event.error || "unknown error"})। ‘आवाज़ जाँचें’ दबाएँ या Windows speech voice जोड़ें।`;
+              finish(false, errorMessage);
+            }, { once: true });
+            window.speechSynthesis.resume();
+            window.speechSynthesis.speak(utterance);
+          });
+        } catch (error) {
+          isAssistantSpeaking = false;
+          currentUtterance = undefined;
+          voiceStatus.textContent = `आवाज़ शुरू नहीं हो सकी: ${error.message || "speech engine error"}`;
+          if (voiceCallActive) scheduleVoiceListening();
+          return false;
+        }
+      }
+
+      async function sendQuestion(question, fromVoiceCall = false) {
+        const cleanQuestion = question.trim();
+        if (!cleanQuestion || sendButton.disabled) return;
+
+        welcome.hidden = true;
+        addMessage("user", cleanQuestion);
+        conversation.push({ role: "user", content: cleanQuestion });
+        textarea.value = "";
+        sendButton.disabled = true;
+        micButton.disabled = !fromVoiceCall;
+        hint.textContent = "जवाब तैयार हो रहा है...";
+
+        const pending = addMessage("assistant", "सोच रहा हूँ…");
+        try {
+          const response = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ messages: conversation }),
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "जवाब नहीं मिल पाया।");
+
+          conversation.push({ role: "assistant", content: result.answer });
+          pending.remove();
+          addMessage("assistant", result.answer);
+          if (fromVoiceCall) {
+            if (voiceCallActive) await speakHindi(result.answer);
+          } else {
+            void speakHindi(result.answer);
+          }
+          if (!voiceCallActive) {
+            hint.textContent = "Enter दबाकर भेजें · Shift + Enter से नई पंक्ति";
+          }
+        } catch (error) {
+          pending.remove();
+          addMessage("assistant", error.message || "कुछ गड़बड़ हुई। कृपया फिर कोशिश करें।", true);
+          conversation.pop();
+          hint.textContent = "कृपया फिर कोशिश करें।";
+        } finally {
+          sendButton.disabled = false;
+          micButton.disabled = false;
+          if (voiceCallActive) scheduleVoiceListening();
+          else textarea.focus();
+        }
+      }
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        sendQuestion(textarea.value);
+      });
+
+      textarea.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          form.requestSubmit();
+        }
+      });
+
+      document.querySelectorAll(".suggestion").forEach((button) => {
+        button.addEventListener("click", () => sendQuestion(button.textContent));
+      });
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if ("speechSynthesis" in window) {
+        populateVoiceOptions();
+        window.speechSynthesis.addEventListener("voiceschanged", populateVoiceOptions);
+        window.addEventListener("focus", populateVoiceOptions);
+        testVoiceButton.addEventListener("click", testSpeechOutput);
+        refreshVoicesButton.addEventListener("click", () => {
+          window.speechSynthesis.getVoices();
+          populateVoiceOptions();
+          voiceStatus.textContent = "Installed voices दोबारा जाँची गईं। नई Windows voice न दिखे तो app restart करें।";
+        });
+        installVoiceButton.addEventListener("click", () => void openWindowsVoiceSettings());
+        voiceStyleSelect.addEventListener("change", () => {
+          localStorage.setItem(voiceStylePreferenceKey, voiceStyleSelect.value);
+          localStorage.removeItem(voicePreferenceKey);
+          populateVoiceOptions();
+          const voice = selectSpeechVoice();
+          if (voice) localStorage.setItem(voicePreferenceKey, getVoiceKey(voice));
+        });
+        voiceSelect.addEventListener("change", () => {
+          localStorage.setItem(voicePreferenceKey, voiceSelect.value);
+          updateVoiceAvailability();
+        });
+      } else {
+        voiceSelect.disabled = true;
+        voiceSelect.innerHTML = "<option>इस browser में voice उपलब्ध नहीं</option>";
+        testVoiceButton.disabled = true;
+        refreshVoicesButton.disabled = true;
+        voiceStatus.textContent = "इस browser/app में text-to-speech API उपलब्ध नहीं है। Windows voice settings जाँचें।";
+      }
+
+      if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.lang = "hi-IN";
+        recognition.interimResults = true;
+        recognition.continuous = false;
+
+        recognition.addEventListener("start", () => {
+          isListening = true;
+          hint.textContent = "सुन रहा हूँ… अपना सवाल बोलें।";
+        });
+
+        recognition.addEventListener("result", (event) => {
+          const results = Array.from(event.results);
+          textarea.value = results.map((result) => result[0].transcript).join("");
+          const finalTranscript = results
+            .filter((result) => result.isFinal)
+            .map((result) => result[0].transcript)
+            .join("")
+            .trim();
+          if (finalTranscript && voiceCallActive) {
+            recognition.stop();
+            void sendQuestion(finalTranscript, true);
+          }
+        });
+
+        recognition.addEventListener("error", (event) => {
+          if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+            voiceCallActive = false;
+            updateVoiceCallButton();
+            hint.textContent = "वॉइस कॉल के लिए browser में माइक की अनुमति दें।";
+          } else if (event.error === "audio-capture") {
+            voiceCallActive = false;
+            updateVoiceCallButton();
+            hint.textContent = "माइक नहीं मिला। माइक connect करके फिर कोशिश करें।";
+          } else if (event.error !== "aborted" && event.error !== "no-speech") {
+            hint.textContent = "आवाज़ समझ नहीं आई। फिर बोलें या सवाल type करें।";
+          }
+        });
+
+        recognition.addEventListener("end", () => {
+          isListening = false;
+          if (voiceCallActive && !sendButton.disabled && !isAssistantSpeaking) {
+            scheduleVoiceListening();
+          }
+        });
+
+        micButton.addEventListener("click", () => {
+          if (voiceCallActive) {
+            voiceCallActive = false;
+            window.clearTimeout(listenTimer);
+            recognition.stop();
+            stopAssistantSpeech();
+            updateVoiceCallButton();
+            hint.textContent = "वॉइस कॉल समाप्त हुई।";
+          } else {
+            voiceCallActive = true;
+            updateVoiceCallButton();
+            textarea.value = "";
+            stopAssistantSpeech();
+            hint.textContent = "वॉइस कॉल शुरू हो रही है…";
+            startVoiceListening();
+          }
+        });
+      } else {
+        micButton.disabled = true;
+        micButton.title = "इस browser में वॉइस कॉल उपलब्ध नहीं है";
+        hint.textContent = "इस browser में वॉइस कॉल उपलब्ध नहीं है; Chrome या Edge में कोशिश करें।";
+      }
+    </script>
+  </body>
+</html>

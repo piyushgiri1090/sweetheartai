@@ -1,0 +1,9 @@
+{
+  "name": "hindi-personal-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A personal Hindi AI chat with typing, voice input, and spoken replies.",
+  "scripts": {
+    "start": "python server.py"
+  }
+}

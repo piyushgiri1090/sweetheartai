@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <radialGradient id="glass" cx="50%" cy="38%" r="66%">
+      <stop offset="0" stop-color="#293b4b"/>
+      <stop offset="1" stop-color="#090d15"/>
+    </radialGradient>
+    <linearGradient id="heart" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff7566"/>
+      <stop offset=".48" stop-color="#e7473c"/>
+      <stop offset="1" stop-color="#8f1e2b"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <circle cx="64" cy="64" r="59" fill="#0b111a" stroke="#f5b942" stroke-width="2"/>
+  <circle cx="64" cy="64" r="52" fill="url(#glass)" stroke="#62d9f5" stroke-opacity=".62" stroke-width="1.5"/>
+  <path d="M64 99 28 65c-19-20 9-45 28-25l8 9 8-9c19-20 47 5 28 25Z"
+        fill="url(#heart)" stroke="#ffd174" stroke-width="3" stroke-linejoin="round" filter="url(#glow)"/>
+  <path d="M64 93 39 68c-10-10 3-25 14-14l11 11 11-11c11-11 24 4 14 14Z"
+        fill="none" stroke="#ffd88a" stroke-opacity=".65" stroke-width="2"/>
+  <circle cx="64" cy="66" r="8" fill="#b9f4ff" filter="url(#glow)"/>
+  <path d="M64 9v12M64 107v12M9 64h12M107 64h12" stroke="#f5b942" stroke-width="2" stroke-linecap="round"/>
+</svg>
