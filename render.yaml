@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: sweetheartai
+    runtime: python
+    plan: free
+    buildCommand: python -m py_compile server.py
+    startCommand: python server.py
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: APP_MODE
+        value: cloud
+      - key: GEMINI_MODEL
+        value: gemini-3.1-flash-lite
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: APP_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true

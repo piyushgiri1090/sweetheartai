@@ -104,6 +104,21 @@
         box-shadow: inset 0 0 15px #62d9f50a;
       }
 
+      .logout-form { margin: 0 0 0 10px; }
+      .logout-button {
+        padding: 8px 10px;
+        border: 1px solid #62d9f544;
+        border-radius: 6px;
+        background: #0c202a99;
+        color: #a4dce8;
+        font: inherit;
+        font-size: 11px;
+        cursor: pointer;
+      }
+
+      body.cloud-mode header { flex-wrap: wrap; }
+      body.cloud-mode .privacy { font-size: 10px; }
+
       main {
         flex: 1;
         display: flex;
@@ -615,7 +630,10 @@
           <h1>Sweetheart</h1>
           <p class="tagline">Piyush और Nitish द्वारा बनाया गया आपका Hindi सहायक</p>
         </div>
-        <div class="privacy">AI जवाब आपके computer पर बनते हैं</div>
+        <div class="privacy" id="privacy-note">AI जवाब आपके computer पर बनते हैं</div>
+        <form class="logout-form" id="logout-form" action="/logout" method="post" hidden>
+          <button class="logout-button" type="submit">साइन आउट</button>
+        </form>
       </header>
 
       <nav class="tab-bar" role="tablist" aria-label="मुख्य अनुभाग">
@@ -628,7 +646,7 @@
           <section class="welcome" id="welcome" aria-label="शुरुआत">
             <img class="welcome-icon" src="/assets/sweetheart.svg" alt="" />
             <h2>नमस्ते! मैं आपकी क्या मदद करूँ?</h2>
-            <p>लिखकर सवाल पूछें या 📞 दबाकर voice call शुरू करें। Phones के features, specs और खरीदने की सलाह भी पूछें। Call में मैं आपकी बात सुनूँगा और जवाब बोलकर दूँगा।</p>
+              <p>लिखकर सवाल पूछें या 📞 दबाकर voice call शुरू करें। Phones के features, specs और खरीदने की सलाह भी पूछें। Call में मैं आपकी बात सुनूँगा और जवाब बोलकर दूँगा।</p>
             <div class="suggestions">
               <button class="suggestion" type="button">आज के लिए एक अच्छी सलाह दो</button>
               <button class="suggestion" type="button">मुझे कोई नई चीज़ सिखाओ</button>
@@ -641,7 +659,7 @@
         <section class="tab-panel" id="music-panel" role="tabpanel" aria-labelledby="music-tab" hidden>
           <div class="music-heading">
             <h2>म्यूज़िक लाइब्रेरी</h2>
-            <p>गाने की जानकारी और अपनी audio फ़ाइल जोड़ें। डेटा इसी PC पर Sweetheart के local app-data folder में save होता है। हर audio फ़ाइल अधिकतम 50 MB की हो सकती है।</p>
+            <p id="music-storage-note">गाने की जानकारी और अपनी audio फ़ाइल जोड़ें। डेटा इसी PC पर Sweetheart के local app-data folder में save होता है। हर audio फ़ाइल अधिकतम 50 MB की हो सकती है।</p>
           </div>
           <section class="song-generator" aria-labelledby="song-generator-heading">
             <h3 id="song-generator-heading">Prompt से अपना गाना बनाएँ</h3>
@@ -771,6 +789,13 @@
       const voicePreferenceKey = "sweetheart-hindi-voice-v2";
       const voiceStylePreferenceKey = "sweetheart-voice-style-v1";
       const musicTracks = [];
+      const runtimeConfig = {
+        cloud_mode: false,
+        song_generation_enabled: true,
+        voice_samples_enabled: true,
+        windows_voice_settings_enabled: true,
+        music_persistent: true,
+      };
       let musicSearchQuery = "";
       let recognition;
       let voiceCallActive = false;
@@ -806,10 +831,51 @@
       musicTab.addEventListener("click", () => selectTab("music"));
 
       async function requestMusic(url, options) {
-        const response = await fetch(url, options);
+        const response = await authenticatedFetch(url, options);
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "म्यूज़िक लाइब्रेरी का अनुरोध पूरा नहीं हुआ।");
         return result;
+      }
+
+      async function authenticatedFetch(url, options) {
+        const response = await window.fetch(url, options);
+        if (response.status === 401) {
+          window.location.assign("/login");
+          throw new Error("आपका session समाप्त हुआ। फिर से sign in करें।");
+        }
+        return response;
+      }
+
+      async function loadRuntimeConfig() {
+        try {
+          const response = await authenticatedFetch("/api/config");
+          const config = await response.json();
+          if (!response.ok) throw new Error(config.error || "App settings load नहीं हुईं।");
+          Object.assign(runtimeConfig, config);
+          if (runtimeConfig.cloud_mode) {
+            document.body.classList.add("cloud-mode");
+            document.querySelector("#privacy-note").textContent =
+              "AI Google Gemini को जाता है; free-tier data product सुधारने में इस्तेमाल हो सकता है।";
+            document.querySelector("#privacy-note").title =
+              "Browser speech आपके device पर निर्भर है। Google Gemini free-tier privacy terms देखें।";
+            document.querySelector("#logout-form").hidden = false;
+            document.querySelector("#music-storage-note").textContent =
+              "यह free hosted library अस्थायी है; service restart या sleep के बाद songs/audio मिट सकते हैं। हर audio फ़ाइल अधिकतम 50 MB की हो सकती है।";
+            if (!runtimeConfig.song_generation_enabled) {
+              songGeneratorForm.hidden = true;
+              songGeneratorStatus.textContent =
+                "Prompt से गाना बनाना local Windows app में उपलब्ध है; free hosted version में song-generation model नहीं चलता।";
+            }
+            if (!runtimeConfig.voice_samples_enabled) {
+              document.querySelector(".voice-sample").hidden = true;
+            }
+            if (!runtimeConfig.windows_voice_settings_enabled) {
+              installVoiceButton.hidden = true;
+            }
+          }
+        } catch (error) {
+          hint.textContent = error.message || "App settings load नहीं हुईं।";
+        }
       }
 
       function formatDuration(seconds) {
@@ -972,6 +1038,7 @@
       }
 
       async function loadSongGeneratorStatus() {
+        if (!runtimeConfig.song_generation_enabled) return;
         try {
           const result = await requestMusic("/api/song-generator");
           if (!result.installed) {
@@ -1271,7 +1338,7 @@
       }
 
       async function requestVoiceSample(url, options) {
-        const response = await fetch(url, options);
+        const response = await authenticatedFetch(url, options);
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "Voice recording request पूरा नहीं हुआ।");
         return result;
@@ -1579,7 +1646,7 @@
 
         const pending = addMessage("assistant", "सोच रहा हूँ…");
         try {
-          const response = await fetch("/api/chat", {
+          const response = await authenticatedFetch("/api/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ messages: conversation }),
@@ -1726,6 +1793,8 @@
         micButton.title = "इस browser में वॉइस कॉल उपलब्ध नहीं है";
         hint.textContent = "इस browser में वॉइस कॉल उपलब्ध नहीं है; Chrome या Edge में कोशिश करें।";
       }
+
+      void loadRuntimeConfig();
     </script>
   </body>
 </html>

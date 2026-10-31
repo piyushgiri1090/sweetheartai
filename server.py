@@ -1,4 +1,7 @@
 import atexit
+import hashlib
+import hmac
+import html
 import json
 import logging
 import os
@@ -9,16 +12,31 @@ import threading
 import time
 import uuid
 from datetime import datetime
+from http.cookies import CookieError, SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 from urllib.request import Request, urlopen
 
 
 PORT = int(os.environ.get("PORT", "3000"))
+APP_MODE = os.environ.get("APP_MODE", "local").strip().lower()
+CLOUD_MODE = APP_MODE == "cloud"
 MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:3b")
 OLLAMA_CHAT_URL = "http://127.0.0.1:11434/api/chat"
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
+APP_PASSWORD = os.environ.get("APP_PASSWORD", "")
+SESSION_SECRET = os.environ.get("SESSION_SECRET", "")
+SESSION_COOKIE = "__Host-sweetheart_session"
+SESSION_LIFETIME_SECONDS = 7 * 24 * 60 * 60
+LOGIN_WINDOW_SECONDS = 15 * 60
+LOGIN_MAX_ATTEMPTS = 5
+_login_attempts = {}
+_login_attempts_lock = threading.Lock()
+_chat_requests = {}
+_chat_requests_lock = threading.Lock()
 MAX_BODY_BYTES = 100_000
 MAX_MUSIC_UPLOAD_BYTES = 50 * 1024 * 1024
 MAX_VOICE_SAMPLE_BYTES = 25 * 1024 * 1024
@@ -83,6 +101,91 @@ SYSTEM_PROMPT = (
     "details may be outdated and ask for the exact model/variant or a listing to "
     "compare."
 )
+
+
+def _session_signature(expiration):
+    return hmac.new(
+        SESSION_SECRET.encode("utf-8"),
+        str(expiration).encode("ascii"),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def _has_valid_session(cookie_header):
+    if not CLOUD_MODE:
+        return True
+    try:
+        cookies = SimpleCookie()
+        cookies.load(cookie_header or "")
+        value = cookies[SESSION_COOKIE].value
+        expiration_text, signature = value.split(".", 1)
+        expiration = int(expiration_text)
+    except (CookieError, KeyError, TypeError, ValueError):
+        return False
+    if expiration <= int(time.time()):
+        return False
+    return hmac.compare_digest(signature, _session_signature(expiration))
+
+
+def _gemini_answer(messages):
+    if not GEMINI_API_KEY:
+        raise RuntimeError("The Gemini API key has not been configured.")
+
+    contents = [
+        {
+            "role": "model" if message["role"] == "assistant" else "user",
+            "parts": [{"text": message["content"]}],
+        }
+        for message in messages
+    ]
+    body = json.dumps(
+        {
+            "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+            "contents": contents,
+            "generationConfig": {"temperature": 0.7, "maxOutputTokens": 1200},
+        },
+        ensure_ascii=False,
+    ).encode("utf-8")
+    endpoint = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{GEMINI_MODEL}:generateContent"
+    )
+    request = Request(
+        endpoint,
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "x-goog-api-key": GEMINI_API_KEY,
+        },
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=45) as response:
+            result = json.loads(response.read().decode("utf-8"))
+    except HTTPError as error:
+        if error.code == 429:
+            raise RuntimeError(
+                "Gemini free-tier quota is temporarily exhausted. Please try again later."
+            ) from error
+        if error.code in (401, 403):
+            raise RuntimeError(
+                "The Gemini API key is invalid or does not have access to this model."
+            ) from error
+        raise RuntimeError(
+            f"Gemini could not answer (HTTP {error.code}). Please try again."
+        ) from error
+    except (URLError, OSError, TimeoutError) as error:
+        raise RuntimeError("Gemini is temporarily unavailable. Please try again.") from error
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise RuntimeError("Gemini returned an invalid response.") from error
+
+    try:
+        answer = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+    except (KeyError, IndexError, TypeError, AttributeError) as error:
+        raise RuntimeError("Gemini returned an empty or invalid answer.") from error
+    if not answer:
+        raise RuntimeError("Gemini returned an empty or invalid answer.")
+    return answer
 
 
 def _song_api_request(path, method="GET", payload=None, timeout=30):
@@ -585,12 +688,200 @@ class HindiAIHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
+        if CLOUD_MODE:
+            self.send_header("Strict-Transport-Security", "max-age=31536000")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
 
+    def send_redirect(self, location, status_code=303):
+        self.send_response(status_code)
+        self.send_header("Location", location)
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def send_login_page(self, error=""):
+        error_html = (
+            f'<p class="error" role="alert">{html.escape(error)}</p>' if error else ""
+        )
+        page = f"""<!doctype html>
+<html lang="hi"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>Sweetheart · साइन इन</title>
+<style>
+body{{margin:0;min-height:100vh;display:grid;place-items:center;background:#090f1d;color:#eef6ff;font:16px system-ui,sans-serif}}
+main{{box-sizing:border-box;width:min(92vw,390px);padding:30px;border:1px solid #29364d;border-radius:20px;background:#111b2d}}
+h1{{margin:0 0 8px;color:#8eeaff}}p{{line-height:1.55;color:#bdcbe0}}
+label{{display:block;margin:20px 0 8px}}input,button{{box-sizing:border-box;width:100%;padding:12px;border-radius:10px;font:inherit}}
+input{{border:1px solid #40516b;background:#091322;color:#fff}}button{{margin-top:14px;border:0;background:#5edaf4;color:#071321;font-weight:700;cursor:pointer}}
+.error{{color:#ffb5b5}}
+</style><main><h1>Sweetheart</h1><p>अपने निजी सहायक में साइन इन करें।</p>{error_html}
+<form action="/login" method="post"><label for="password">पासवर्ड</label>
+<input id="password" name="password" type="password" autocomplete="current-password" maxlength="256" required autofocus>
+<button type="submit">साइन इन</button></form></main></html>"""
+        body = page.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("Strict-Transport-Security", "max-age=31536000")
+        self.send_header(
+            "Content-Security-Policy",
+            "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; "
+            "base-uri 'none'; frame-ancestors 'none'",
+        )
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def has_valid_session(self):
+        return _has_valid_session(self.headers.get("Cookie", ""))
+
+    def origin_matches_host(self):
+        origin = self.headers.get("Origin")
+        host = self.headers.get("Host", "")
+        if not origin or not host:
+            return False
+        parsed_origin = urlsplit(origin)
+        return (
+            parsed_origin.scheme == "https"
+            and parsed_origin.netloc.lower() == host.lower()
+        )
+
+    def require_cloud_session(self, request_path):
+        if not CLOUD_MODE or request_path == "/healthz":
+            return True
+        if request_path == "/login" and self.command in ("GET", "POST"):
+            return True
+        if request_path == "/logout" and self.command == "POST":
+            return True
+        if self.has_valid_session():
+            return True
+        if self.command == "GET" and request_path in ("/", "/assets/sweetheart.svg"):
+            self.send_redirect("/login", 302)
+        else:
+            self.send_json(401, {"error": "आपका session समाप्त हुआ। फिर से sign in करें।"})
+        return False
+
+    def handle_login(self):
+        if not self.origin_matches_host():
+            self.send_json(403, {"error": "यह sign-in अनुरोध स्वीकार नहीं किया गया।"})
+            return
+        try:
+            content_length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            self.send_json(400, {"error": "साइन-इन अनुरोध सही नहीं है।"})
+            return
+        if content_length <= 0 or content_length > 4096:
+            self.send_json(413, {"error": "साइन-इन अनुरोध बहुत बड़ा है।"})
+            return
+        if self.headers.get("Content-Type", "").split(";", 1)[0].strip() != (
+            "application/x-www-form-urlencoded"
+        ):
+            self.send_json(415, {"error": "साइन-इन फ़ॉर्म का format सही नहीं है।"})
+            return
+        try:
+            form = parse_qs(
+                self.rfile.read(content_length).decode("utf-8"),
+                keep_blank_values=True,
+                strict_parsing=True,
+            )
+        except (UnicodeDecodeError, ValueError):
+            self.send_json(400, {"error": "साइन-इन फ़ॉर्म सही नहीं है।"})
+            return
+
+        client = self.client_address[0]
+        now = time.monotonic()
+        with _login_attempts_lock:
+            attempts = [
+                attempt
+                for attempt in _login_attempts.get(client, [])
+                if now - attempt < LOGIN_WINDOW_SECONDS
+            ]
+            _login_attempts[client] = attempts
+            blocked = len(attempts) >= LOGIN_MAX_ATTEMPTS
+            retry_after = (
+                max(1, int(LOGIN_WINDOW_SECONDS - (now - attempts[0])))
+                if blocked
+                else 0
+            )
+        if blocked:
+            self.send_response(429)
+            self.send_header("Retry-After", str(retry_after))
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+
+        supplied = form.get("password", [""])[0]
+        if not hmac.compare_digest(
+            supplied.encode("utf-8"),
+            APP_PASSWORD.encode("utf-8"),
+        ):
+            with _login_attempts_lock:
+                _login_attempts.setdefault(client, []).append(now)
+            self.send_login_page("पासवर्ड सही नहीं है।")
+            return
+
+        with _login_attempts_lock:
+            _login_attempts.pop(client, None)
+        expiration = int(time.time()) + SESSION_LIFETIME_SECONDS
+        cookie_value = f"{expiration}.{_session_signature(expiration)}"
+        self.send_response(303)
+        self.send_header("Location", "/")
+        self.send_header(
+            "Set-Cookie",
+            f"{SESSION_COOKIE}={cookie_value}; Path=/; Max-Age={SESSION_LIFETIME_SECONDS}; "
+            "HttpOnly; Secure; SameSite=Strict",
+        )
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Strict-Transport-Security", "max-age=31536000")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def handle_logout(self):
+        if not self.origin_matches_host():
+            self.send_json(403, {"error": "यह logout अनुरोध स्वीकार नहीं किया गया।"})
+            return
+        self.send_response(303)
+        self.send_header("Location", "/login")
+        self.send_header(
+            "Set-Cookie",
+            f"{SESSION_COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict",
+        )
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def do_GET(self):
         request_path = urlsplit(self.path).path
+        if request_path == "/healthz":
+            self.send_json(200, {"status": "ok"})
+            return
+        if CLOUD_MODE and request_path == "/login":
+            if self.has_valid_session():
+                self.send_redirect("/", 302)
+            else:
+                self.send_login_page()
+            return
+        if not self.require_cloud_session(request_path):
+            return
+        if request_path == "/api/config":
+            self.send_json(
+                200,
+                {
+                    "cloud_mode": CLOUD_MODE,
+                    "song_generation_enabled": not CLOUD_MODE,
+                    "voice_samples_enabled": not CLOUD_MODE,
+                    "windows_voice_settings_enabled": not CLOUD_MODE,
+                    "music_persistent": not CLOUD_MODE,
+                },
+            )
+            return
+        if CLOUD_MODE and request_path.startswith("/api/voice-sample"):
+            self.send_json(404, {"error": "Hosted version में voice samples उपलब्ध नहीं हैं।"})
+            return
         if request_path == "/api/voice-sample":
             self.handle_voice_sample_info()
             return
@@ -637,11 +928,32 @@ class HindiAIHandler(BaseHTTPRequestHandler):
         if content_type.startswith("text/html"):
             self.send_header("X-Frame-Options", "DENY")
             self.send_header("Referrer-Policy", "no-referrer")
+            self.send_header(
+                "Content-Security-Policy",
+                "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; "
+                "script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+                "connect-src 'self'; form-action 'self'; object-src 'none'; "
+                "base-uri 'self'; frame-ancestors 'none'",
+            )
+            self.send_header("Cache-Control", "no-store")
+        if CLOUD_MODE:
+            self.send_header("Strict-Transport-Security", "max-age=31536000")
         self.end_headers()
         self.wfile.write(page)
 
     def do_POST(self):
         request_path = urlsplit(self.path).path
+        if CLOUD_MODE and request_path == "/login":
+            self.handle_login()
+            return
+        if CLOUD_MODE and request_path == "/logout":
+            self.handle_logout()
+            return
+        if not self.require_cloud_session(request_path):
+            return
+        if CLOUD_MODE and not self.origin_matches_host():
+            self.send_json(403, {"error": "यह अनुरोध स्वीकार नहीं किया गया।"})
+            return
         if request_path == "/api/open-voice-settings":
             self.handle_open_voice_settings()
             return
@@ -657,12 +969,21 @@ class HindiAIHandler(BaseHTTPRequestHandler):
         self.handle_chat()
 
     def do_PUT(self):
-        if urlsplit(self.path).path == "/api/voice-sample":
+        request_path = urlsplit(self.path).path
+        if not self.require_cloud_session(request_path):
+            return
+        if CLOUD_MODE and not self.origin_matches_host():
+            self.send_json(403, {"error": "यह अनुरोध स्वीकार नहीं किया गया।"})
+            return
+        if CLOUD_MODE and request_path == "/api/voice-sample":
+            self.send_json(404, {"error": "Hosted version में voice samples उपलब्ध नहीं हैं।"})
+            return
+        if request_path == "/api/voice-sample":
             self.handle_voice_sample_upload()
             return
         audio_match = re.fullmatch(
             r"/api/music/([0-9a-f-]+)/audio",
-            urlsplit(self.path).path,
+            request_path,
         )
         if not audio_match:
             self.send_json(404, {"error": "Not found."})
@@ -670,14 +991,41 @@ class HindiAIHandler(BaseHTTPRequestHandler):
         self.handle_music_audio_upload(audio_match.group(1))
 
     def do_DELETE(self):
-        if urlsplit(self.path).path == "/api/voice-sample":
+        request_path = urlsplit(self.path).path
+        if not self.require_cloud_session(request_path):
+            return
+        if CLOUD_MODE and not self.origin_matches_host():
+            self.send_json(403, {"error": "यह अनुरोध स्वीकार नहीं किया गया।"})
+            return
+        if CLOUD_MODE and request_path == "/api/voice-sample":
+            self.send_json(404, {"error": "Hosted version में voice samples उपलब्ध नहीं हैं।"})
+            return
+        if request_path == "/api/voice-sample":
             self.handle_voice_sample_delete()
             return
-        track_match = re.fullmatch(r"/api/music/([0-9a-f-]+)", urlsplit(self.path).path)
+        track_match = re.fullmatch(r"/api/music/([0-9a-f-]+)", request_path)
         if not track_match:
             self.send_json(404, {"error": "Not found."})
             return
         self.handle_music_delete(track_match.group(1))
+
+    def allow_chat_request(self):
+        if not CLOUD_MODE:
+            return True
+        client = self.client_address[0]
+        now = time.monotonic()
+        with _chat_requests_lock:
+            recent = [
+                request_time
+                for request_time in _chat_requests.get(client, [])
+                if now - request_time < 60
+            ]
+            if len(recent) >= 20:
+                _chat_requests[client] = recent
+                return False
+            recent.append(now)
+            _chat_requests[client] = recent
+        return True
 
     def read_music_library(self):
         if not MUSIC_INDEX_PATH.exists():
@@ -722,6 +1070,16 @@ class HindiAIHandler(BaseHTTPRequestHandler):
         self.send_json(200, {"tracks": library})
 
     def handle_song_generator_status(self):
+        if CLOUD_MODE:
+            self.send_json(
+                200,
+                {
+                    "installed": False,
+                    "models_loaded": False,
+                    "disabled": True,
+                },
+            )
+            return
         installed = SONG_GENERATOR_PYTHON.is_file() and (
             SONG_GENERATOR_ENGINE_DIR / "acestep" / "api_server.py"
         ).is_file()
@@ -756,6 +1114,17 @@ class HindiAIHandler(BaseHTTPRequestHandler):
         )
 
     def handle_song_generation_create(self):
+        if CLOUD_MODE:
+            self.send_json(
+                503,
+                {
+                    "error": (
+                        "Prompt से गाना बनाना केवल local Windows app में उपलब्ध है; "
+                        "free cloud host पर song-generation model नहीं चल सकता।"
+                    )
+                },
+            )
+            return
         try:
             content_length = int(self.headers.get("Content-Length", "0"))
         except ValueError:
@@ -1228,6 +1597,16 @@ class HindiAIHandler(BaseHTTPRequestHandler):
         self.send_json(200, {"deleted": True})
 
     def handle_chat(self):
+        if not self.allow_chat_request():
+            self.send_json(
+                429,
+                {
+                    "error": (
+                        "अभी बहुत सारे सवाल भेजे गए हैं। एक मिनट रुककर फिर कोशिश करें।"
+                    )
+                },
+            )
+            return
         try:
             content_length = int(self.headers.get("Content-Length", "0"))
         except ValueError:
@@ -1270,6 +1649,17 @@ class HindiAIHandler(BaseHTTPRequestHandler):
 
         if messages[-1]["role"] != "user":
             self.send_json(400, {"error": "Your latest message must be a question."})
+            return
+
+        if CLOUD_MODE:
+            try:
+                answer = _gemini_answer(messages)
+            except RuntimeError as error:
+                self.log_error(f"Gemini request failed: {error}")
+                status_code = 429 if "quota" in str(error).casefold() else 503
+                self.send_json(status_code, {"error": str(error)})
+                return
+            self.send_json(200, {"answer": answer})
             return
 
         if PERSONAL_ADAPTER_PATH.is_dir() and not getattr(sys, "frozen", False):
@@ -1378,7 +1768,36 @@ class HindiAIHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
 
 
+def validate_cloud_configuration():
+    if APP_MODE not in ("local", "cloud"):
+        raise RuntimeError("APP_MODE must be either 'local' or 'cloud'.")
+    if not CLOUD_MODE:
+        return
+    missing = [
+        name
+        for name, value in (
+            ("GEMINI_API_KEY", GEMINI_API_KEY),
+            ("APP_PASSWORD", APP_PASSWORD),
+            ("SESSION_SECRET", SESSION_SECRET),
+        )
+        if not value
+    ]
+    if missing:
+        raise RuntimeError(
+            "Cloud mode requires these environment variables: "
+            + ", ".join(missing)
+        )
+    if len(APP_PASSWORD) < 14:
+        raise RuntimeError("APP_PASSWORD must contain at least 14 characters.")
+    if len(SESSION_SECRET) < 32:
+        raise RuntimeError("SESSION_SECRET must contain at least 32 characters.")
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", GEMINI_MODEL):
+        raise RuntimeError("GEMINI_MODEL contains unsupported characters.")
+
+
 if __name__ == "__main__":
-    with HindiAIHTTPServer(("127.0.0.1", PORT), HindiAIHandler) as server:
-        print(f"Hindi Personal AI is running at http://localhost:{PORT}")
+    validate_cloud_configuration()
+    host = "0.0.0.0" if CLOUD_MODE else "127.0.0.1"
+    with HindiAIHTTPServer((host, PORT), HindiAIHandler) as server:
+        print(f"Sweetheart is running on {host}:{PORT}")
         server.serve_forever()

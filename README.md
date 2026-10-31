@@ -8,6 +8,16 @@ A small personal chat app that accepts typed or spoken questions, answers in Hin
 - [Ollama for Windows](https://ollama.com/download)
 - Enough free disk space for the local model download (the default Qwen 2.5 3B model is a few GB)
 
+## Free hosted web version
+
+The optional Render Blueprint in `render.yaml` deploys a single-user web version on Render's free web-service plan and uses the Gemini Developer API free tier for chat. Free API quotas and model availability are controlled by Google and can change. Google states that content submitted on the free tier may be used to improve its products; do not send private or sensitive information through the hosted version. See [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing) and [Gemini API terms](https://ai.google.dev/gemini-api/terms).
+
+1. Create a Gemini API key in [Google AI Studio](https://aistudio.google.com/apikey). Keep the project on the free tier and do not enable billing if you require zero API charges. Keep the key secret.
+2. In Render, create a new Blueprint from this GitHub repository. Enter `GEMINI_API_KEY` and a strong `APP_PASSWORD` (at least 14 characters) when prompted. Render generates `SESSION_SECRET`; do not commit any of these values.
+3. Wait for the first deploy, then open the Render URL and sign in with `APP_PASSWORD`.
+
+The API key stays on the server. Hosted chat is protected by a single-user password, secure session cookie, same-origin checks, and an in-memory request limit. The Render free service can sleep when idle and its local filesystem is temporary: music uploads and library entries may disappear after a restart or redeploy. The free hosted version does not run the ACE-Step song generator or store personal voice samples. Speech input/output uses the visitor's browser/device. The Windows desktop app continues to use local Ollama, Windows voices, and the local song generator.
+
 ## Run on Windows PowerShell
 
 1. Install Ollama and download the local model once:
@@ -28,11 +38,11 @@ A small personal chat app that accepts typed or spoken questions, answers in Hin
 
 The app reads new answers aloud and offers feminine/warm and deep/masculine delivery styles. Use **आवाज़ जाँचें** to test speech playback, **आवाज़ें खोजें** after installing a voice, and **Windows voice जोड़ें** to open Windows Speech settings. Add a Hindi speech voice in Windows language/speech settings, then return and refresh; restart the app if Windows does not publish the new voice immediately. Until Hindi is installed, Sweetheart uses an available Windows voice such as David or Zira as a fallback and clearly warns that its Hindi pronunciation may be poor. The voice selector prefers a Hindi voice when one is installed. Speech pitch and response style cannot create a new natural voice or imitate a particular person. The assistant uses light humor when appropriate and stays serious for sensitive topics. The assistant can explain general phone specifications and buying trade-offs, but it does not have live prices or product listings; check exact model variants and current offers before buying. The assistant is named Sweetheart and was developed by Piyush and Nitish. Voice recognition is provided by the browser and may be processed by its speech service; typed chat requests are sent only to the local Ollama service.
 
-Chat messages are sent only to the local Ollama service at `127.0.0.1:11434`; no cloud API key is used. Do not expose this server to the public internet.
+In local mode, chat messages are sent only to Ollama at `127.0.0.1:11434`; no cloud API key is used. Do not expose the local server to the public internet.
 
 The voice-style selector also offers a general deep, confident Indian male delivery. This is a pitch/rate style applied to an installed Hindi speech voice, not a recording or imitation of any real person. A natural male Hindi voice requires a compatible Hindi voice to be installed in Windows or the browser.
 
-The **म्यूज़िक** tab is available in both the web page and the Windows app. Add a title and artist, then optional album, genre, year, track number, language, mood, composer, lyricist, label, notes, and an audio file. Audio files up to 50 MB can be played in the library; entries can also be searched and deleted. The web server and desktop app save the shared library under `%LOCALAPPDATA%\Sweetheart\Music` on this PC, so either version can see the same tracks. Music files and metadata stay local and are not uploaded to a cloud service. The web version must be running on this same PC to access the local library; do not expose its server to the public internet.
+The **म्यूज़िक** tab is available in both the web page and the Windows app. Add a title and artist, then optional album, genre, year, track number, language, mood, composer, lyricist, label, notes, and an audio file. Audio files up to 50 MB can be played in the library; entries can also be searched and deleted. In local mode, the web server and desktop app save the shared library under `%LOCALAPPDATA%\Sweetheart\Music` on this PC, so either version can see the same tracks. Local-mode music files and metadata stay on this PC. The web version must be running on this same PC to access the local library; do not expose its server to the public internet.
 
 ### Generate a sung song from a prompt
 
