@@ -859,9 +859,8 @@ input{{border:1px solid #40516b;background:#091322;color:#fff}}button{{margin-to
         if not _is_valid_login_csrf_token(form.get("csrf_token", [""])[0]):
             self.send_json(403, {"error": "यह sign-in अनुरोध स्वीकार नहीं किया गया।"})
             return
-        if not self.origin_matches_host() and (
-            self.headers.get("Origin") or self.headers.get("Sec-Fetch-Site")
-        ):
+        origin = (self.headers.get("Origin") or "").strip()
+        if origin.lower() not in ("", "null") and not self.origin_matches_host():
             self.send_json(403, {"error": "यह sign-in अनुरोध स्वीकार नहीं किया गया।"})
             return
 
