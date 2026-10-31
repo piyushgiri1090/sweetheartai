@@ -745,12 +745,29 @@ input{{border:1px solid #40516b;background:#091322;color:#fff}}button{{margin-to
         host = self.headers.get("Host", "")
         if origin:
             parsed_origin = urlsplit(origin)
-            allowed_hosts = {host.lower()} if host else set()
-            if RENDER_EXTERNAL_HOSTNAME:
-                allowed_hosts.add(RENDER_EXTERNAL_HOSTNAME)
+            allowed_hosts = set()
+            for candidate in (
+                host,
+                self.headers.get("X-Forwarded-Host", "").split(",", 1)[0].strip(),
+                RENDER_EXTERNAL_HOSTNAME,
+            ):
+                try:
+                    candidate_url = urlsplit(
+                        candidate if "://" in candidate else f"//{candidate}"
+                    )
+                except ValueError:
+                    continue
+                if candidate_url.hostname:
+                    allowed_hosts.add(candidate_url.hostname.lower())
+            try:
+                origin_port = parsed_origin.port
+            except ValueError:
+                return False
             return (
                 parsed_origin.scheme == "https"
-                and parsed_origin.netloc.lower() in allowed_hosts
+                and parsed_origin.hostname is not None
+                and origin_port in (None, 443)
+                and parsed_origin.hostname.lower() in allowed_hosts
             )
         return self.headers.get("Sec-Fetch-Site", "").lower() == "same-origin"
 
