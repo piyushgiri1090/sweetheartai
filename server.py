@@ -35,6 +35,7 @@ SESSION_COOKIE = "__Host-sweetheart_session"
 SESSION_LIFETIME_SECONDS = 7 * 24 * 60 * 60
 LOGIN_WINDOW_SECONDS = 15 * 60
 LOGIN_MAX_ATTEMPTS = 5
+LOGIN_CSRF_LIFETIME_SECONDS = 60 * 60
 _login_attempts = {}
 _login_attempts_lock = threading.Lock()
 _chat_requests = {}
@@ -111,6 +112,35 @@ def _session_signature(expiration):
         str(expiration).encode("ascii"),
         hashlib.sha256,
     ).hexdigest()
+
+
+def _login_csrf_token():
+    issued_at = int(time.time())
+    nonce = uuid.uuid4().hex
+    message = f"{issued_at}.{nonce}"
+    signature = hmac.new(
+        SESSION_SECRET.encode("utf-8"),
+        f"login:{message}".encode("ascii"),
+        hashlib.sha256,
+    ).hexdigest()
+    return f"{message}.{signature}"
+
+
+def _is_valid_login_csrf_token(token):
+    match = re.fullmatch(r"(\d{10})\.([0-9a-f]{32})\.([0-9a-f]{64})", token)
+    if not match:
+        return False
+    issued_at = int(match.group(1))
+    now = int(time.time())
+    if issued_at > now + 60 or now - issued_at > LOGIN_CSRF_LIFETIME_SECONDS:
+        return False
+    message = f"{match.group(1)}.{match.group(2)}"
+    expected = hmac.new(
+        SESSION_SECRET.encode("utf-8"),
+        f"login:{message}".encode("ascii"),
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(match.group(3), expected)
 
 
 def _has_valid_session(cookie_header):
@@ -707,6 +737,7 @@ class HindiAIHandler(BaseHTTPRequestHandler):
         error_html = (
             f'<p class="error" role="alert">{html.escape(error)}</p>' if error else ""
         )
+        csrf_token = _login_csrf_token()
         page = f"""<!doctype html>
 <html lang="hi"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <title>Sweetheart · साइन इन</title>
@@ -718,7 +749,8 @@ label{{display:block;margin:20px 0 8px}}input,button{{box-sizing:border-box;widt
 input{{border:1px solid #40516b;background:#091322;color:#fff}}button{{margin-top:14px;border:0;background:#5edaf4;color:#071321;font-weight:700;cursor:pointer}}
 .error{{color:#ffb5b5}}
 </style><main><h1>Sweetheart</h1><p>अपने निजी सहायक में साइन इन करें।</p>{error_html}
-<form action="/login" method="post"><label for="password">पासवर्ड</label>
+<form action="/login" method="post"><input type="hidden" name="csrf_token" value="{csrf_token}">
+<label for="password">पासवर्ड</label>
 <input id="password" name="password" type="password" autocomplete="current-password" maxlength="256" required autofocus>
 <button type="submit">साइन इन</button></form></main></html>"""
         body = page.encode("utf-8")
@@ -801,9 +833,6 @@ input{{border:1px solid #40516b;background:#091322;color:#fff}}button{{margin-to
         return False
 
     def handle_login(self):
-        if not self.origin_matches_host():
-            self.send_json(403, {"error": "यह sign-in अनुरोध स्वीकार नहीं किया गया।"})
-            return
         try:
             content_length = int(self.headers.get("Content-Length", "0"))
         except ValueError:
@@ -825,6 +854,15 @@ input{{border:1px solid #40516b;background:#091322;color:#fff}}button{{margin-to
             )
         except (UnicodeDecodeError, ValueError):
             self.send_json(400, {"error": "साइन-इन फ़ॉर्म सही नहीं है।"})
+            return
+
+        if not _is_valid_login_csrf_token(form.get("csrf_token", [""])[0]):
+            self.send_json(403, {"error": "यह sign-in अनुरोध स्वीकार नहीं किया गया।"})
+            return
+        if not self.origin_matches_host() and (
+            self.headers.get("Origin") or self.headers.get("Sec-Fetch-Site")
+        ):
+            self.send_json(403, {"error": "यह sign-in अनुरोध स्वीकार नहीं किया गया।"})
             return
 
         client = self.client_address[0]
