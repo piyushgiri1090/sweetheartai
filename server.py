@@ -30,6 +30,7 @@ GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "")
 SESSION_SECRET = os.environ.get("SESSION_SECRET", "")
 RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME", "").strip().lower()
+RENDER_EXTERNAL_URL = os.environ.get("RENDER_EXTERNAL_URL", "").strip()
 SESSION_COOKIE = "__Host-sweetheart_session"
 SESSION_LIFETIME_SECONDS = 7 * 24 * 60 * 60
 LOGIN_WINDOW_SECONDS = 15 * 60
@@ -750,6 +751,7 @@ input{{border:1px solid #40516b;background:#091322;color:#fff}}button{{margin-to
                 host,
                 self.headers.get("X-Forwarded-Host", "").split(",", 1)[0].strip(),
                 RENDER_EXTERNAL_HOSTNAME,
+                RENDER_EXTERNAL_URL,
             ):
                 try:
                     candidate_url = urlsplit(
@@ -763,12 +765,24 @@ input{{border:1px solid #40516b;background:#091322;color:#fff}}button{{margin-to
                 origin_port = parsed_origin.port
             except ValueError:
                 return False
-            return (
+            allowed = (
                 parsed_origin.scheme == "https"
                 and parsed_origin.hostname is not None
                 and origin_port in (None, 443)
                 and parsed_origin.hostname.lower() in allowed_hosts
             )
+            if not allowed:
+                _logger.warning(
+                    "Rejected login Origin: scheme=%r origin_host=%r request_host=%r "
+                    "forwarded_host=%r configured_external_host=%r configured_external_url=%r",
+                    parsed_origin.scheme,
+                    parsed_origin.hostname,
+                    host,
+                    self.headers.get("X-Forwarded-Host", ""),
+                    RENDER_EXTERNAL_HOSTNAME,
+                    RENDER_EXTERNAL_URL,
+                )
+            return allowed
         return self.headers.get("Sec-Fetch-Site", "").lower() == "same-origin"
 
     def require_cloud_session(self, request_path):
