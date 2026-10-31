@@ -29,6 +29,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "")
 SESSION_SECRET = os.environ.get("SESSION_SECRET", "")
+RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME", "").strip().lower()
 SESSION_COOKIE = "__Host-sweetheart_session"
 SESSION_LIFETIME_SECONDS = 7 * 24 * 60 * 60
 LOGIN_WINDOW_SECONDS = 15 * 60
@@ -742,13 +743,16 @@ input{{border:1px solid #40516b;background:#091322;color:#fff}}button{{margin-to
     def origin_matches_host(self):
         origin = self.headers.get("Origin")
         host = self.headers.get("Host", "")
-        if not origin or not host:
-            return False
-        parsed_origin = urlsplit(origin)
-        return (
-            parsed_origin.scheme == "https"
-            and parsed_origin.netloc.lower() == host.lower()
-        )
+        if origin:
+            parsed_origin = urlsplit(origin)
+            allowed_hosts = {host.lower()} if host else set()
+            if RENDER_EXTERNAL_HOSTNAME:
+                allowed_hosts.add(RENDER_EXTERNAL_HOSTNAME)
+            return (
+                parsed_origin.scheme == "https"
+                and parsed_origin.netloc.lower() in allowed_hosts
+            )
+        return self.headers.get("Sec-Fetch-Site", "").lower() == "same-origin"
 
     def require_cloud_session(self, request_path):
         if not CLOUD_MODE or request_path == "/healthz":
